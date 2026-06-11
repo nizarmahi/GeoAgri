@@ -79,7 +79,7 @@ class DashboardController extends Controller
             DB::raw('COUNT(*) as total'),
             DB::raw('SUM(CASE WHEN harga IS NULL OR harga <= 0 THEN 1 ELSE 0 END) as null_count')
         )
-            ->with('pasar:id_pasar,nama')
+            ->with('pasar:id,psr_nama,kabkota_id')
             ->groupBy('pasar_id')
             ->orderByDesc(DB::raw('SUM(CASE WHEN harga IS NULL OR harga <= 0 THEN 1 ELSE 0 END)'))
             ->paginate(5)
@@ -87,7 +87,7 @@ class DashboardController extends Controller
                 $pct = $item->total > 0 ? round($item->null_count / $item->total * 100, 1) : 0;
                 $color = $pct > 15 ? '#dc2626' : ($pct > 8 ? '#ea580c' : ($pct > 5 ? '#2d3bde' : ($pct > 2 ? '#7c3aed' : '#16a34a')));
                 return [
-                    'nama' => $item->pasar?->nama ?? 'Pasar #' . $item->pasar_id,
+                    'nama' => $item->pasar?->psr_nama ?? 'Pasar #' . $item->pasar_id,
                     'pct'  => $pct,
                     'color' => $color,
                 ];
@@ -101,7 +101,7 @@ class DashboardController extends Controller
             ->where(function ($q) {
                 $q->whereNull('harga')->orWhere('harga', '<=', 0);
             })
-            ->with('pasar:id_pasar,nama')
+            ->with('pasar:id,psr_nama,kabkota_id')
             ->groupBy('pasar_id', 'tanggal')
             ->orderBy('tanggal', 'desc')
             ->orderBy('null_count', 'desc')
@@ -109,7 +109,7 @@ class DashboardController extends Controller
             ->get()
             ->map(function ($item) {
                 return [
-                    'nama' => $item->pasar?->nama ?? 'Sumber #' . $item->pasar_id,
+                    'nama' => $item->pasar?->psr_nama ?? 'Sumber #' . $item->pasar_id,
                     'tgl'  => Carbon::parse($item->tanggal)->format('d F Y'),
                     'null' => $item->null_count,
                 ];
@@ -152,28 +152,29 @@ class DashboardController extends Controller
         $tanggal     = $request->input('tanggal');
 
         $query = Komoditas::query()
-            ->join('pasar', 'komoditas.pasar_id', '=', 'pasar.id_pasar')
-            ->join('kabupaten_kota', 'pasar.kabupaten_kota_id', '=', 'kabupaten_kota.id_kabupaten_kota')
-            ->join('provinsi', 'kabupaten_kota.provinsi_id', '=', 'provinsi.id_provinsi')
+            ->join('pasar', 'komoditas.pasar_id', '=', 'pasar.id')
+            ->join('kab_kota', 'pasar.kabkota_id', '=', 'kab_kota.id')
+            ->join('provinsi', 'kab_kota.provinsi_id', '=', 'provinsi.id_provinsi')
             ->select(
                 'komoditas.pasar_id',
-                'pasar.nama as pasar_nama',
+                'pasar.psr_nama as pasar_nama',
                 'pasar.latitude',
                 'pasar.longitude',
                 'provinsi.nama as provinsi_nama',
+                'kab_kota.kab_nama as kabupaten_nama',
                 DB::raw('COUNT(*) as total_records'),
                 DB::raw('SUM(CASE WHEN komoditas.harga IS NULL OR komoditas.harga <= 0 THEN 1 ELSE 0 END) as null_records'),
                 DB::raw('ROUND(AVG(komoditas.harga)) as avg_harga'),
                 DB::raw('MAX(komoditas.tanggal) as last_update')
             )
-            ->groupBy('komoditas.pasar_id', 'pasar.nama', 'pasar.latitude', 'pasar.longitude', 'provinsi.nama');
+            ->groupBy('komoditas.pasar_id', 'pasar.psr_nama', 'pasar.latitude', 'pasar.longitude', 'provinsi.nama', 'kab_kota.kab_nama');
 
         if ($komoditasId) {
             $query->where('komoditas.komoditas_id', $komoditasId);
         }
 
         if ($provinsiId) {
-            $query->where('kabupaten_kota.provinsi_id', $provinsiId);
+            $query->where('kab_kota.provinsi_id', $provinsiId);
         }
 
         if ($tanggal) {
@@ -192,6 +193,7 @@ class DashboardController extends Controller
                     'pasar_id'      => $item->pasar_id,
                     'nama'          => $item->pasar_nama,
                     'provinsi'      => $item->provinsi_nama,
+                    'kabupaten'     => $item->kabupaten_nama,
                     'latitude'      => $item->latitude,
                     'longitude'     => $item->longitude,
                     'total_records' => $item->total_records,

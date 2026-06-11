@@ -53,24 +53,20 @@ class MasterController extends Controller
     {
         $data = Cache::remember('master:pasar', 3600, function () {
             return Pasar::query()
-                ->with('kabupatenKota:id_kabupaten_kota,provinsi_id,nama')
-                ->orderBy('nama')
+                ->with('kabupatenKota:id,kab_nama,provinsi_id')
+                ->orderBy('psr_nama')
                 ->get([
-                    'id_pasar as id',
-                    'nama',
-                    'kabupaten_kota_id',
-                    'latitude',
-                    'longitude',
+                    'id',
+                    'psr_nama as nama',
+                    'kabkota_id as kabupaten_kota_id',
                 ])
                 ->map(function ($pasar) {
                     return [
                         'id' => $pasar->id,
                         'nama' => $pasar->nama,
                         'kabupaten_id' => $pasar->kabupaten_kota_id,
-                        'kabupaten' => $pasar->kabupatenKota?->nama,
+                        'kabupaten' => $pasar->kabupatenKota?->kab_nama,
                         'provinsi_id' => $pasar->kabupatenKota?->provinsi_id,
-                        'latitude' => $pasar->latitude,
-                        'longitude' => $pasar->longitude,
                     ];
                 });
         });

@@ -240,36 +240,39 @@
         }
 
         .pagination-wrap {
-            margin-top: 16px;
-            padding-top: 12px;
+            margin-top: 12px;
+            padding-top: 10px;
             border-top: 1px solid var(--border);
         }
 
-        .pagination-wrap nav {
+        .pager-summary {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .pager-controls {
             display: flex;
             justify-content: center;
+            align-items: center;
+            gap: 6px;
         }
 
-        .pagination-wrap .pagination {
+        .pager-pages {
             display: flex;
-            gap: 3px;
-            list-style: none;
-            margin: 0;
-            padding: 0;
+            gap: 4px;
+            align-items: center;
         }
 
-        .pagination-wrap .page-item {
-            margin: 0;
-        }
-
-        .pagination-wrap .page-link {
-            display: flex;
+        .pager-link {
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 26px;
-            height: 26px;
-            padding: 0 6px;
-            font-size: 11px;
+            min-width: 28px;
+            height: 28px;
+            padding: 0 8px;
+            font-size: 12px;
             font-weight: 600;
             font-family: var(--mono);
             color: var(--text-muted);
@@ -280,19 +283,19 @@
             transition: all .15s;
         }
 
-        .pagination-wrap .page-link:hover {
+        .pager-link:hover {
             background: var(--bg-muted);
             color: var(--text);
             border-color: var(--text-light);
         }
 
-        .pagination-wrap .active .page-link {
+        .pager-link.active {
             background: var(--primary);
             color: #fff;
             border-color: var(--primary);
         }
 
-        .pagination-wrap .disabled .page-link {
+        .pager-link.disabled {
             opacity: .35;
             pointer-events: none;
         }
@@ -371,7 +374,8 @@
         <select name="komoditas_id" class="filter-select">
             <option value="">Semua Komoditas</option>
             @foreach ($komoditasList as $k)
-                <option value="{{ $k->id_master_komoditas }}" {{ $komoditasId == $k->id_master_komoditas ? 'selected' : '' }}>
+                <option value="{{ $k->id_master_komoditas }}"
+                    {{ $komoditasId == $k->id_master_komoditas ? 'selected' : '' }}>
                     {{ $k->nama }}
                 </option>
             @endforeach
@@ -461,7 +465,12 @@
                                 <td class="mono">{{ number_format($item['null_records']) }}</td>
                                 <td>
                                     @php
-                                        $badgeClass = $item['null_pct'] > 15 ? 'high' : ($item['null_pct'] > 5 ? 'medium' : 'low');
+                                        $badgeClass =
+                                            $item['null_pct'] > 15
+                                                ? 'high'
+                                                : ($item['null_pct'] > 5
+                                                    ? 'medium'
+                                                    : 'low');
                                     @endphp
                                     <span class="badge-null {{ $badgeClass }}">{{ $item['null_pct'] }}%</span>
                                 </td>
@@ -481,7 +490,32 @@
                 </table>
             </div>
             <div class="pagination-wrap">
-                {{ $pasarData->links() }}
+                @if ($pasarData->hasPages())
+                    <div class="pager-summary">
+                        Menampilkan {{ $pasarData->firstItem() }} sampai {{ $pasarData->lastItem() }} dari
+                        {{ $pasarData->total() }} pasar
+                    </div>
+                    <div class="pager-controls">
+                        <a href="{{ $pasarData->previousPageUrl() ?? '#' }}"
+                            class="pager-link {{ $pasarData->onFirstPage() ? 'disabled' : '' }}">Prev</a>
+
+                        <div class="pager-pages">
+                            @for ($page = 1; $page <= $pasarData->lastPage(); $page++)
+                                @if ($page == 1 || $page == $pasarData->lastPage() || abs($page - $pasarData->currentPage()) <= 1)
+                                    <a href="{{ $pasarData->url($page) }}"
+                                        class="pager-link {{ $page === $pasarData->currentPage() ? 'active' : '' }}">
+                                        {{ $page }}
+                                    </a>
+                                @elseif ($page == 2 || $page == $pasarData->lastPage() - 1)
+                                    <span class="pager-link disabled">...</span>
+                                @endif
+                            @endfor
+                        </div>
+
+                        <a href="{{ $pasarData->nextPageUrl() ?? '#' }}"
+                            class="pager-link {{ $pasarData->hasMorePages() ? '' : 'disabled' }}">Next</a>
+                    </div>
+                @endif
             </div>
         </div>
 
@@ -569,7 +603,9 @@
             });
 
             if (bounds.length) {
-                map.fitBounds(bounds, { padding: [30, 30] });
+                map.fitBounds(bounds, {
+                    padding: [30, 30]
+                });
             }
         }
 

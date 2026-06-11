@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MasterKomoditas extends Model
 {
@@ -14,6 +15,7 @@ class MasterKomoditas extends Model
     protected $fillable = [
         'nama',
         'satuan',
+        'kategori_id'
     ];
 
     // ── Relasi ────────────────────────────────────────────────
@@ -42,6 +44,15 @@ class MasterKomoditas extends Model
             MappingKomoditasScraper::class,
             'komoditas_master_id',
             'id_master_komoditas'
+        );
+    }
+
+    public function kategori(): BelongsTo
+    {
+        return $this->belongsTo(
+            KategoriKomoditas::class,
+            'kategori_id',
+            'id'
         );
     }
 }

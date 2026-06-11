@@ -76,37 +76,37 @@ class TrenController extends Controller
         $validated = $request->validate([
             'komoditas_id' => 'nullable|integer|exists:master_komoditas,id_master_komoditas',
             'provinsi_id' => 'nullable|integer|exists:provinsi,id_provinsi',
-            'pasar_id' => 'nullable|integer|exists:pasar,id_pasar',
+            'pasar_id' => 'nullable|integer|exists:pasar,id',
             'from' => 'nullable|date',
             'to' => 'nullable|date|after_or_equal:from',
             'limit' => 'nullable|integer|min:1|max:1000',
         ]);
 
         $query = Komoditas::query()
-            ->join('pasar', 'komoditas.pasar_id', '=', 'pasar.id_pasar')
-            ->join('kabupaten_kota', 'pasar.kabupaten_kota_id', '=', 'kabupaten_kota.id_kabupaten_kota')
-            ->join('provinsi', 'kabupaten_kota.provinsi_id', '=', 'provinsi.id_provinsi')
-            ->join('master_komoditas', 'komoditas.komoditas_id', '=', 'master_komoditas.id_master_komoditas')
+            ->join('pasar', 'komoditas.pasar_id', '=', 'pasar.id')
+            ->join('kab_kota', 'pasar.kabkota_id', '=', 'kab_kota.id')
+            ->join('provinsi', 'kab_kota.provinsi_id', '=', 'provinsi.id_provinsi')
+            ->join('master_komoditas', 'komoditas.komoditas_master_id', '=', 'master_komoditas.id_master_komoditas')
             ->select(
                 'komoditas.id_komoditas as id',
                 'komoditas.tanggal',
                 'komoditas.harga',
-                'pasar.id_pasar as pasar_id',
-                'pasar.nama as pasar',
-                'kabupaten_kota.id_kabupaten_kota as kabupaten_id',
-                'kabupaten_kota.nama as kabupaten',
+                'pasar.id as pasar_id',
+                'pasar.psr_nama as pasar',
+                'kab_kota.id as kabupaten_id',
+                'kab_kota.kab_nama as kabupaten',
                 'provinsi.id_provinsi as provinsi_id',
                 'provinsi.nama as provinsi',
-                'master_komoditas.id_master_komoditas as komoditas_id',
+                'master_komoditas.id_master_komoditas as komoditas_master_id',
                 'master_komoditas.nama as komoditas',
                 'master_komoditas.satuan as satuan'
             )
             ->orderByDesc('komoditas.tanggal')
             ->orderBy('provinsi.nama')
-            ->orderBy('pasar.nama');
+            ->orderBy('pasar.psr_nama');
 
         if (!empty($validated['komoditas_id'])) {
-            $query->where('komoditas.komoditas_id', $validated['komoditas_id']);
+            $query->where('komoditas.komoditas_master_id', $validated['komoditas_id']);
         }
 
         if (!empty($validated['provinsi_id'])) {
@@ -139,7 +139,7 @@ class TrenController extends Controller
                 'provinsi_id' => $row->provinsi_id,
                 'kabupaten_id' => $row->kabupaten_id,
                 'pasar_id' => $row->pasar_id,
-                'komoditas_id' => $row->komoditas_id,
+                'komoditas_master_id' => $row->komoditas_master_id,
             ];
         });
 

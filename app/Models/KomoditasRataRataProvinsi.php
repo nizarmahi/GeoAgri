@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class KomoditasRataRataProvinsi extends Model
 {
     protected $table      = 'komoditas_rata-rata_provinsi';
-    protected $primaryKey = 'id_komoditas_rata-rata_provinsi';
+    protected $primaryKey = 'id_rata-rata_prov';
     public    $timestamps = false;
 
     protected $fillable = [

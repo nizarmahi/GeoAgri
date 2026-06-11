@@ -10,16 +10,16 @@ use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 class Pasar extends Model
 {
     protected $table      = 'pasar';
-    protected $primaryKey = 'id_pasar';
+    protected $primaryKey = 'id';
     public    $timestamps = false;
 
     protected $fillable = [
         'id_scraper_pasar',
-        'nama',
-        'kabupaten_kota_id',
+        'psr_nama',
+        'kabkota_id',
+        'psr_status',
         'latitude',
         'longitude',
-        'alamat',
         'is_virtual',
         'geom',
     ];
@@ -36,8 +36,8 @@ class Pasar extends Model
     {
         return $this->belongsTo(
             KabupatenKota::class,
-            'kabupaten_kota_id',
-            'id_kabupaten_kota'
+            'kabkota_id',
+            'id'
         );
     }
 
@@ -51,7 +51,7 @@ class Pasar extends Model
             KabupatenKota::class,
             'id_kabupaten_kota', // FK di kabupaten_kota (local key pasar)
             'id_provinsi',       // PK di provinsi
-            'kabupaten_kota_id', // FK di pasar
+            'kabkota_id', // FK di pasar
             'provinsi_id'        // FK di kabupaten_kota → provinsi
         );
     }
@@ -61,7 +61,7 @@ class Pasar extends Model
         return $this->hasMany(
             Komoditas::class,
             'pasar_id',
-            'id_pasar'
+            'id'
         );
     }
 

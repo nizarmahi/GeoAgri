@@ -689,11 +689,34 @@
             komoditas_ids: [],
             komoditas_id: null,
             provinsi_id: null,
+            pasar_id: null,
             range: 30
         };
 
         let komoditasIndex = {};
         let komoditasItems = [];
+        let pasarItems = [];
+
+        function syncPasarOptions() {
+            const selPasar = document.getElementById('filterPasar');
+            if (!selPasar) return;
+
+            const currentPasarId = state.pasar_id ? String(state.pasar_id) : null;
+            const selectedProvinsiId = state.provinsi_id ? String(state.provinsi_id) : null;
+
+            const filteredPasar = selectedProvinsiId ?
+                pasarItems.filter(p => String(p.provinsi_id) === selectedProvinsiId) :
+                pasarItems;
+
+            selPasar.innerHTML = '';
+            selPasar.add(new Option('Semua Pasar', ''));
+            filteredPasar.forEach(p => selPasar.add(new Option(p.nama, p.id)));
+
+            const hasCurrentPasar = currentPasarId && filteredPasar.some(p => String(p.id) === currentPasarId);
+            state.pasar_id = hasCurrentPasar ? currentPasarId : null;
+            selPasar.value = state.pasar_id ?? '';
+            selPasar.disabled = filteredPasar.length === 0;
+        }
 
         function getPrimaryKomoditasId() {
             return state.komoditas_ids[0] ?? null;
@@ -804,8 +827,8 @@
             const selProv = document.getElementById('filterProvinsi');
             prov.data.forEach(p => selProv.add(new Option(p.nama, p.id)));
 
-            const selPasar = document.getElementById('filterPasar');
-            pas.data.forEach(p => selPasar.add(new Option(p.nama, p.id)));
+            pasarItems = pas.data ?? [];
+            syncPasarOptions();
 
             // default: komoditas pertama
             if (kom.data.length) {
@@ -1070,7 +1093,12 @@
 
         document.getElementById('filterProvinsi').addEventListener('change', e => {
             state.provinsi_id = e.target.value || null;
+            syncPasarOptions();
             loadTrend();
+        });
+
+        document.getElementById('filterPasar').addEventListener('change', e => {
+            state.pasar_id = e.target.value || null;
         });
 
         document.querySelectorAll('[data-range]').forEach(btn => {

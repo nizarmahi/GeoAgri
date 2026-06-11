@@ -8,15 +8,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class KabupatenKota extends Model
 {
-    protected $table      = 'kabupaten_kota';
-    protected $primaryKey = 'id_kabupaten_kota';
+    protected $table      = 'kab_kota';
+    protected $primaryKey = 'id';
     public    $timestamps = false;
 
     protected $fillable = [
         'id_scraper_kab',
         'provinsi_id',
-        'nama',
-        'keycode',
+        'kab_nama',
+        'kab_keycode',
         'latitude',
         'longitude',
         'batas_wilayah',
@@ -42,8 +42,8 @@ class KabupatenKota extends Model
     {
         return $this->hasMany(
             Pasar::class,
-            'kabupaten_kota_id',
-            'id_kabupaten_kota'
+            'kabkota_id',
+            'id'
         );
     }
 }

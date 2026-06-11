@@ -55,21 +55,21 @@ class MapController extends Controller
             ->filterKomoditas($komoditasId)
             ->whereDate('tanggal', $tanggal)
             ->validHarga()
-            ->join('pasar', 'komoditas.pasar_id', '=', 'pasar.id_pasar')
-            ->join('kabupaten_kota', 'pasar.kabupaten_kota_id', '=', 'kabupaten_kota.id_kabupaten_kota')
+            ->join('pasar', 'komoditas.pasar_id', '=', 'pasar.id')
+            ->join('kab_kota', 'pasar.kabkota_id', '=', 'kab_kota.id')
             ->select(
-                'kabupaten_kota.provinsi_id',
+                'kab_kota.provinsi_id',
                 DB::raw('ROUND(AVG(komoditas.harga)) AS harga'),
                 DB::raw('COUNT(DISTINCT komoditas.pasar_id) AS jumlah_pasar')
             )
-            ->groupBy('kabupaten_kota.provinsi_id')
+            ->groupBy('kab_kota.provinsi_id')
             ->get()
             ->keyBy('provinsi_id');
 
         $provinsiNama = DB::table('provinsi')
             ->pluck('nama', 'id_provinsi');
 
-        $geometries = DB::table('kabupaten_kota')
+        $geometries = DB::table('kab_kota')
             ->select(
                 'provinsi_id',
                 DB::raw("ST_AsGeoJSON(ST_Union(batas_wilayah)) AS geojson")
@@ -120,22 +120,22 @@ class MapController extends Controller
             ->filterKomoditas($komoditasId)
             ->whereDate('tanggal', $tanggal)
             ->validHarga()
-            ->join('pasar', 'komoditas.pasar_id', '=', 'pasar.id_pasar')
+            ->join('pasar', 'komoditas.pasar_id', '=', 'pasar.id')
             ->select(
-                'pasar.kabupaten_kota_id',
+                'pasar.kabkota_id as kabupaten_id',
                 DB::raw('ROUND(AVG(komoditas.harga)) AS harga'),
                 DB::raw('COUNT(DISTINCT komoditas.pasar_id) AS jumlah_pasar')
             )
-            ->groupBy('pasar.kabupaten_kota_id')
+            ->groupBy('pasar.kabkota_id')
             ->get()
-            ->keyBy('kabupaten_kota_id');
+            ->keyBy('kabupaten_id');
 
         // Ambil geometri tiap kabupaten
-        $geometries = DB::table('kabupaten_kota')
+        $geometries = DB::table('kab_kota')
             ->select(
-                'id_kabupaten_kota',
+                'id',
                 'provinsi_id',
-                'nama',
+                'kab_nama',
                 DB::raw("ST_AsGeoJSON(batas_wilayah) AS geojson")
             )
             ->whereNotNull('batas_wilayah')
@@ -147,15 +147,15 @@ class MapController extends Controller
             $geometry = json_decode($kab->geojson, true);
             if (! $geometry) continue;
 
-            $harga = $hargaMap->get($kab->id_kabupaten_kota);
+            $harga = $hargaMap->get($kab->id);
 
             $features[] = [
                 'type'       => 'Feature',
                 'geometry'   => $geometry,
                 'properties' => [
-                    'kabupaten_id'  => $kab->id_kabupaten_kota,
+                    'kabupaten_id'  => $kab->id,
                     'provinsi_id'   => $kab->provinsi_id,
-                    'nama'          => $kab->nama,
+                    'nama'          => $kab->kab_nama,
                     'harga'         => $harga ? (int) $harga->harga : null,
                     'jumlah_pasar'  => $harga ? (int) $harga->jumlah_pasar : 0,
                     'has_data'      => ! is_null($harga),

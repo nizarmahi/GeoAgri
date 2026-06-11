@@ -15,9 +15,13 @@ class Komoditas extends Model
     protected $fillable = [
         'tanggal',
         'pasar_id',
-        'komoditas_id',
+        // 'komoditas_id',
+        'komoditas_nama',
+        'satuan',
         'harga',
         'created_at',
+        'komoditas_master_id',
+        'kategori_id',
     ];
 
     protected $casts = [
@@ -33,7 +37,7 @@ class Komoditas extends Model
         return $this->belongsTo(
             Pasar::class,
             'pasar_id',
-            'id_pasar'
+            'id'
         );
     }
 
@@ -41,19 +45,28 @@ class Komoditas extends Model
     {
         return $this->belongsTo(
             MasterKomoditas::class,
-            'komoditas_id',
+            'komoditas_master_id',
             'id_master_komoditas'
+        );
+    }
+
+    public function kategori(): BelongsTo
+    {
+        return $this->belongsTo(
+            KategoriKomoditas::class,
+            'kategori_id',
+            'id'
         );
     }
 
     // ── Scopes ────────────────────────────────────────────────
 
     /**
-     * Filter berdasarkan komoditas_id
+     * Filter berdasarkan komoditas_master_id
      */
     public function scopeFilterKomoditas(Builder $query, int $id): Builder
     {
-        return $query->where('komoditas_id', $id);
+        return $query->where('komoditas_master_id', $id);
     }
 
     /**
