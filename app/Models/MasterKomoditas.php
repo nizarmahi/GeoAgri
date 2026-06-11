@@ -33,7 +33,7 @@ class MasterKomoditas extends Model
     {
         return $this->hasMany(
             Komoditas::class,
-            'komoditas_id',
+            'komoditas_master_id',
             'id_master_komoditas'
         );
     }

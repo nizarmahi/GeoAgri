@@ -32,7 +32,7 @@ class MappingKomoditasScraper extends Model
     {
         return $this->belongsTo(
             MasterKomoditas::class,
-            'komoditas_id',
+            'komoditas_master_id',
             'id_master_komoditas'
         );
     }

@@ -57,12 +57,12 @@ class DashboardController extends Controller
         });
 
         $nullPerKomoditas = Komoditas::select(
-            'komoditas_id',
+            'komoditas_master_id',
             DB::raw('COUNT(*) as total'),
             DB::raw('SUM(CASE WHEN harga IS NULL OR harga <= 0 THEN 1 ELSE 0 END) as null_count')
         )
             ->with('masterKomoditas:id_master_komoditas,nama')
-            ->groupBy('komoditas_id')
+            ->groupBy('komoditas_master_id')
             ->get()
             ->sortByDesc('null_count');
 
@@ -170,7 +170,7 @@ class DashboardController extends Controller
             ->groupBy('komoditas.pasar_id', 'pasar.psr_nama', 'pasar.latitude', 'pasar.longitude', 'provinsi.nama', 'kab_kota.kab_nama');
 
         if ($komoditasId) {
-            $query->where('komoditas.komoditas_id', $komoditasId);
+            $query->where('komoditas.komoditas_master_id', $komoditasId);
         }
 
         if ($provinsiId) {
