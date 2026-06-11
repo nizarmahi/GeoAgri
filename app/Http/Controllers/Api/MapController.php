@@ -72,9 +72,9 @@ class MapController extends Controller
         $geometries = DB::table('kab_kota')
             ->select(
                 'provinsi_id',
-                DB::raw("ST_AsGeoJSON(ST_Union(batas_wilayah)) AS geojson")
+                DB::raw("ST_AsGeoJSON(ST_Union(geom)) AS geojson")
             )
-            ->whereNotNull('batas_wilayah')
+            ->whereNotNull('geom')
             ->groupBy('provinsi_id')
             ->get();
 
@@ -136,9 +136,9 @@ class MapController extends Controller
                 'id',
                 'provinsi_id',
                 'kab_nama',
-                DB::raw("ST_AsGeoJSON(batas_wilayah) AS geojson")
+                DB::raw("ST_AsGeoJSON(geom) AS geojson")
             )
-            ->whereNotNull('batas_wilayah')
+            ->whereNotNull('geom')
             ->get();
 
         $features = [];

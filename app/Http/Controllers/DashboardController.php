@@ -158,8 +158,8 @@ class DashboardController extends Controller
             ->select(
                 'komoditas.pasar_id',
                 'pasar.psr_nama as pasar_nama',
-                'pasar.latitude',
-                'pasar.longitude',
+                DB::raw('MAX(ST_Y(ST_Centroid(pasar.geom))) as latitude'),
+                DB::raw('MAX(ST_X(ST_Centroid(pasar.geom))) as longitude'),
                 'provinsi.nama as provinsi_nama',
                 'kab_kota.kab_nama as kabupaten_nama',
                 DB::raw('COUNT(*) as total_records'),
@@ -167,7 +167,7 @@ class DashboardController extends Controller
                 DB::raw('ROUND(AVG(komoditas.harga)) as avg_harga'),
                 DB::raw('MAX(komoditas.tanggal) as last_update')
             )
-            ->groupBy('komoditas.pasar_id', 'pasar.psr_nama', 'pasar.latitude', 'pasar.longitude', 'provinsi.nama', 'kab_kota.kab_nama');
+            ->groupBy('komoditas.pasar_id', 'pasar.psr_nama', 'provinsi.nama', 'kab_kota.kab_nama');
 
         if ($komoditasId) {
             $query->where('komoditas.komoditas_master_id', $komoditasId);

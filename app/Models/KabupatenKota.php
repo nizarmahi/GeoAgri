@@ -19,7 +19,7 @@ class KabupatenKota extends Model
         'kab_keycode',
         'latitude',
         'longitude',
-        'batas_wilayah',
+        'geom',
     ];
 
     protected $casts = [
