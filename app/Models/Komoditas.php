@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Komoditas extends Model
 {
     protected $table      = 'komoditas';
-    protected $primaryKey = 'id_komoditas';
+    protected $primaryKey = 'id';
     public    $timestamps = false;
 
     protected $fillable = [

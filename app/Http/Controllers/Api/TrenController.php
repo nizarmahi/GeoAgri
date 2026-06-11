@@ -88,7 +88,7 @@ class TrenController extends Controller
             ->join('provinsi', 'kab_kota.provinsi_id', '=', 'provinsi.id_provinsi')
             ->join('master_komoditas', 'komoditas.komoditas_master_id', '=', 'master_komoditas.id_master_komoditas')
             ->select(
-                'komoditas.id_komoditas as id',
+                'komoditas.id as id',
                 'komoditas.tanggal',
                 'komoditas.harga',
                 'pasar.id as pasar_id',
