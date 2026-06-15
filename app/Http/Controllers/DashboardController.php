@@ -23,6 +23,7 @@ class DashboardController extends Controller
 
     public function analisisNull(): View
     {
+        set_time_limit(0);
         $totalRecords = Komoditas::count();
         $totalNull = Komoditas::whereNull('harga')->orWhere('harga', '<=', 0)->count();
         $totalValid = $totalRecords - $totalNull;
@@ -147,6 +148,7 @@ class DashboardController extends Controller
 
     public function analisisPasar(Request $request): View
     {
+        set_time_limit(0);
         $komoditasId = $request->integer('komoditas_id', 0) ?: null;
         $provinsiId  = $request->integer('provinsi_id', 0) ?: null;
         $tanggal     = $request->input('tanggal');

@@ -33,6 +33,18 @@ class PerProvinsiController extends Controller
         $komoditasId = (int) $validated['komoditas_id'];
         $tanggal     = $validated['tanggal'] ?? now()->toDateString();
 
+        // ── Fallback ke tanggal terakhir yang punya data ────
+        $latestDate = KomoditasRataRataProvinsi::query()
+            ->filterKomoditas($komoditasId)
+            ->validHarga()
+            ->whereDate('tanggal', '<=', $tanggal)
+            ->orderBy('tanggal', 'desc')
+            ->value('tanggal');
+
+        if ($latestDate) {
+            $tanggal = $latestDate;
+        }
+
         // ── Query (cache 10 menit) ─────────────────────────
         $cacheKey = "per_provinsi:{$komoditasId}:{$tanggal}";
 
@@ -66,13 +78,13 @@ class PerProvinsiController extends Controller
         $totalPasar = Pasar::getTotalPasar();
         $totalKomoditas = MasterKomoditas::count();
         $dataValid = KomoditasRataRataProvinsi::query()
-            // ->filterKomoditas($komoditasId)
+            ->filterKomoditas($komoditasId)
             ->whereDate('tanggal', $tanggal)
             ->validHarga()
             ->count();
         $dataValidPct = $data->count() > 0 ? ($dataValid / $data->count()) * 100 : 0;
         $dataNull  = KomoditasRataRataProvinsi::query()
-            // ->filterKomoditas($komoditasId)
+            ->filterKomoditas($komoditasId)
             ->whereDate('tanggal', $tanggal)
             ->whereNull('harga')
             ->count();

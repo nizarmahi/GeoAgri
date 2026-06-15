@@ -1036,7 +1036,7 @@
                 const panels = [
                     'sumAvg', 'sumMin', 'sumMax', 'sumVol', 'sumTrend',
                     'insightText', 'trendCompareChart', 'rankingChart',
-                    'volatilityChart', 'barChart', 'heatmapChart', 'perbandinganChart'
+                    'volatilityChart', 'barChart', 'heatmapTable', 'perbandinganChart'
                 ];
                 panels.forEach(id => {
                     const el = document.getElementById(id);
@@ -1486,7 +1486,15 @@
         // ── Heatmap ────────────────────────────────────────────
         function updateHeatmap(perProv) {
             const data = perProv?.data ?? [];
-            if (!data.length) return;
+            const table = document.getElementById('heatmapTable');
+            const thead = table.querySelector('thead tr');
+            const tbody = table.querySelector('tbody');
+
+            if (!data.length) {
+                thead.innerHTML = `<th class="row-header">Provinsi</th>`;
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted);font-size:13px">Tidak ada data untuk tanggal ini</td></tr>`;
+                return;
+            }
 
             const hargaList = data.map(d => d.harga).filter(Boolean);
             const hMin = Math.min(...hargaList);
@@ -1508,15 +1516,12 @@
 
             // Komoditas sebagai kolom, provinsi sebagai baris
             const komList = masterKomoditas.slice(0, 6);
-            const table = document.getElementById('heatmapTable');
 
             // Header
-            const thead = table.querySelector('thead tr');
             thead.innerHTML = `<th class="row-header">Provinsi</th>` +
                 komList.map(k => `<th>${k.nama.split(' ')[0]}</th>`).join('');
 
             // Body: gunakan data per provinsi untuk 1 komoditas terpilih
-            const tbody = table.querySelector('tbody');
             tbody.innerHTML = data.slice(0, 15).map(row => `
         <tr>
             <td class="heatmap-label">${row.provinsi.replace('Kepulauan ','Kep. ')}</td>
