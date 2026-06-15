@@ -29,4 +29,7 @@ Route::middleware('web')->group(function () {
 
     Route::get('/data',           [DashboardController::class, 'data'])
         ->name('data.index');
+
+    Route::get('/peta-pasar',     [DashboardController::class, 'petaPasar'])
+        ->name('peta-pasar');
 });

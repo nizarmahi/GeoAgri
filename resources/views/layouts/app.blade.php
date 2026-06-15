@@ -400,6 +400,15 @@
                     Analisis Pasar
                 </a>
 
+                <a href="{{ route('peta-pasar') }}"
+                    class="nav-item {{ request()->routeIs('peta-pasar') ? 'active' : '' }}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                        <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    Peta Pasar
+                </a>
+
                 <a href="{{ route('data.index') }}" class="nav-item {{ request()->routeIs('data.*') ? 'active' : '' }}">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 9h18M3 15h18M9 3v18M15 3v18" stroke-linecap="round" />

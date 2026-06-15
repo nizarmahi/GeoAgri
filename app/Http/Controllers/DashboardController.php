@@ -230,6 +230,17 @@ class DashboardController extends Controller
         ));
     }
 
+    public function petaPasar(): View
+    {
+        $komoditasList = MasterKomoditas::orderBy('nama')->get(['id_master_komoditas', 'nama']);
+        $provinsiList = DB::table('provinsi')->orderBy('nama')->get(['id_provinsi', 'nama']);
+
+        return view('dashboard.peta-pasar', compact(
+            'komoditasList',
+            'provinsiList'
+        ));
+    }
+
     public function data(): View
     {
         return view('dashboard.data');

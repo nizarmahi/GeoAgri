@@ -111,6 +111,89 @@ class MapController extends Controller
         ];
     }
 
+    // ── GeoJSON Pasar (Point) ────────────────────────────────
+
+    public function pasarMap(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'komoditas_id' => 'required|integer|exists:master_komoditas,id_master_komoditas',
+            'tanggal'      => 'nullable|date',
+            'provinsi_id'  => 'nullable|integer|exists:provinsi,id_provinsi',
+        ]);
+
+        $komoditasId = (int) $validated['komoditas_id'];
+        $tanggal     = $validated['tanggal'] ?? now()->toDateString();
+        $provinsiId  = $request->integer('provinsi_id') ?: null;
+
+        $query = Komoditas::query()
+            ->filterKomoditas($komoditasId)
+            ->whereDate('tanggal', $tanggal)
+            ->validHarga()
+            ->join('pasar', 'komoditas.pasar_id', '=', 'pasar.id')
+            ->join('kab_kota', 'pasar.kabkota_id', '=', 'kab_kota.id')
+            ->join('provinsi', 'kab_kota.provinsi_id', '=', 'provinsi.id_provinsi')
+            ->select(
+                'komoditas.pasar_id',
+                'pasar.psr_nama as pasar_nama',
+                'kab_kota.kab_nama as kabupaten_nama',
+                'provinsi.nama as provinsi_nama',
+                'provinsi.id_provinsi',
+                DB::raw('ROUND(AVG(komoditas.harga)) as harga'),
+                DB::raw('COUNT(*) as total_records'),
+                DB::raw('MAX(ST_Y(ST_Centroid(pasar.geom))) as latitude'),
+                DB::raw('MAX(ST_X(ST_Centroid(pasar.geom))) as longitude'),
+            )
+            ->whereNotNull('pasar.geom')
+            ->groupBy(
+                'komoditas.pasar_id',
+                'pasar.psr_nama',
+                'kab_kota.kab_nama',
+                'provinsi.nama',
+                'provinsi.id_provinsi'
+            );
+
+        if ($provinsiId) {
+            $query->where('kab_kota.provinsi_id', $provinsiId);
+        }
+
+        $pasarData = $query->get();
+
+        $features = [];
+
+        foreach ($pasarData as $item) {
+            if (! $item->latitude || ! $item->longitude) continue;
+
+            $features[] = [
+                'type'       => 'Feature',
+                'geometry'   => [
+                    'type'        => 'Point',
+                    'coordinates' => [(float) $item->longitude, (float) $item->latitude],
+                ],
+                'properties' => [
+                    'pasar_id'       => $item->pasar_id,
+                    'nama'           => $item->pasar_nama,
+                    'kabupaten'      => $item->kabupaten_nama,
+                    'provinsi'       => $item->provinsi_nama,
+                    'provinsi_id'    => $item->id_provinsi,
+                    'harga'          => $item->harga ? (int) $item->harga : null,
+                    'total_records'  => (int) $item->total_records,
+                ],
+            ];
+        }
+
+        return response()->json([
+            'type'     => 'FeatureCollection',
+            'features' => $features,
+            'meta'     => [
+                'level'         => 'pasar',
+                'komoditas_id'  => $komoditasId,
+                'tanggal'       => $tanggal,
+                'provinsi_id'   => $provinsiId,
+                'total_features'=> count($features),
+            ],
+        ]);
+    }
+
     // ── GeoJSON Level Kabupaten ───────────────────────────────
 
     private function buildKabupatenGeoJSON(int $komoditasId, string $tanggal): array

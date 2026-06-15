@@ -40,6 +40,9 @@ Route::middleware('throttle:60,1')->group(function () {
         Route::get('per-provinsi', PerProvinsiController::class);
         // GET /api/komoditas/per-provinsi?komoditas_id=1&tanggal=2024-01-15
 
+        Route::get('pasar-map',    [MapController::class, 'pasarMap']);
+        // GET /api/komoditas/pasar-map?komoditas_id=1&tanggal=2024-01-15&provinsi_id=35
+
         Route::get('map',          MapController::class);
         // GET /api/komoditas/map?komoditas_id=1&tanggal=2024-01-15&level=provinsi
         // GET /api/komoditas/map?komoditas_id=1&tanggal=2024-01-15&level=kabupaten
