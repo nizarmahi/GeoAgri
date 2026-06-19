@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -74,8 +75,8 @@ class Komoditas extends Model
      */
     public function scopeDateRange(Builder $query, ?string $from, ?string $to): Builder
     {
-        if ($from) $query->whereDate('tanggal', '>=', $from);
-        if ($to)   $query->whereDate('tanggal', '<=', $to);
+        if ($from) $query->where('tanggal', '>=', $from);
+        if ($to)   $query->where('tanggal', '<', Carbon::parse($to)->addDay()->toDateString());
         return $query;
     }
 

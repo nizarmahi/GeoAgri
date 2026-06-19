@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Komoditas;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -25,6 +26,9 @@ class MapController extends Controller
      */
     public function __invoke(Request $request): JsonResponse
     {
+        set_time_limit(0);
+        ini_set('memory_limit', '512M');
+
         // ── Validasi ─────────────────────────────────────────
         $validated = $request->validate([
             'komoditas_id' => 'required|integer|exists:master_komoditas,id_master_komoditas',
@@ -53,7 +57,8 @@ class MapController extends Controller
     {
         $hargaMap = Komoditas::query()
             ->filterKomoditas($komoditasId)
-            ->whereDate('tanggal', $tanggal)
+            ->where('tanggal', '>=', $tanggal)
+            ->where('tanggal', '<', Carbon::parse($tanggal)->addDay()->toDateString())
             ->validHarga()
             ->join('pasar', 'komoditas.pasar_id', '=', 'pasar.id')
             ->join('kab_kota', 'pasar.kabkota_id', '=', 'kab_kota.id')
@@ -72,7 +77,12 @@ class MapController extends Controller
         $geometries = DB::table('kab_kota')
             ->select(
                 'provinsi_id',
-                DB::raw("ST_AsGeoJSON(ST_Union(geom)) AS geojson")
+                // DB::raw("ST_AsGeoJSON(ST_Union(geom)) AS geojson")
+                DB::raw("
+                    ST_AsGeoJSON(
+                        ST_SimplifyPreserveTopology(geom, 0.05)
+                    ) AS geojson
+                ")
             )
             ->whereNotNull('geom')
             ->groupBy('provinsi_id')
@@ -85,6 +95,8 @@ class MapController extends Controller
             if (! $geometry) continue;
 
             $harga = $hargaMap->get($geo->provinsi_id);
+
+            if (! $harga) continue; // Hanya tampilkan provinsi yang punya data harga
 
             $features[] = [
                 'type'       => 'Feature',
@@ -127,7 +139,8 @@ class MapController extends Controller
 
         $query = Komoditas::query()
             ->filterKomoditas($komoditasId)
-            ->whereDate('tanggal', $tanggal)
+            ->where('tanggal', '>=', $tanggal)
+            ->where('tanggal', '<', Carbon::parse($tanggal)->addDay()->toDateString())
             ->validHarga()
             ->join('pasar', 'komoditas.pasar_id', '=', 'pasar.id')
             ->join('kab_kota', 'pasar.kabkota_id', '=', 'kab_kota.id')
@@ -181,6 +194,8 @@ class MapController extends Controller
             ];
         }
 
+        // dd($features);
+
         return response()->json([
             'type'     => 'FeatureCollection',
             'features' => $features,
@@ -189,7 +204,7 @@ class MapController extends Controller
                 'komoditas_id'  => $komoditasId,
                 'tanggal'       => $tanggal,
                 'provinsi_id'   => $provinsiId,
-                'total_features'=> count($features),
+                'total_features' => count($features),
             ],
         ]);
     }
@@ -201,7 +216,8 @@ class MapController extends Controller
         // Harga rata-rata per kabupaten (agregat dari pasar di kabupaten tsb)
         $hargaMap = Komoditas::query()
             ->filterKomoditas($komoditasId)
-            ->whereDate('tanggal', $tanggal)
+            ->where('tanggal', '>=', $tanggal)
+            ->where('tanggal', '<', Carbon::parse($tanggal)->addDay()->toDateString())
             ->validHarga()
             ->join('pasar', 'komoditas.pasar_id', '=', 'pasar.id')
             ->select(
@@ -226,11 +242,15 @@ class MapController extends Controller
 
         $features = [];
 
+        // dd($hargaMap->toArray(), $geometries->pluck('id')->toArray());
+
         foreach ($geometries as $kab) {
             $geometry = json_decode($kab->geojson, true);
             if (! $geometry) continue;
 
             $harga = $hargaMap->get($kab->id);
+
+            // if (! $harga) continue; // Hanya tampilkan kabupaten yang punya data harga
 
             $features[] = [
                 'type'       => 'Feature',
@@ -244,7 +264,10 @@ class MapController extends Controller
                     'has_data'      => ! is_null($harga),
                 ],
             ];
+            // dd($features);
         }
+
+        // dd($features);
 
         return [
             'type'     => 'FeatureCollection',

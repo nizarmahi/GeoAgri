@@ -6,8 +6,8 @@
 @push('styles')
     <style>
         /* ════════════════════════════════════════════════
-       ANALISIS HARGA — Page Styles
-    ════════════════════════════════════════════════ */
+                           ANALISIS HARGA — Page Styles
+                        ════════════════════════════════════════════════ */
 
         /* ── Page Header ─────────────────────────────── */
         .page-header {
@@ -233,6 +233,22 @@
             border-radius: var(--radius);
             box-shadow: var(--shadow-sm);
             overflow: hidden;
+        }
+
+        #cmpCard1,
+        #cmpCard2,
+        #cmpCard3 {
+            height: 420px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #cmpCard1 .panel-body,
+        #cmpCard2 .panel-body,
+        #cmpCard3 .panel-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
 
         .panel-head {
@@ -869,7 +885,9 @@
                         <div class="summary-value" style="font-size:16px" id="{{ $card['id'] }}-harga">—</div>
                     </div>
                     <div class="panel-body">
-                        <canvas id="{{ $card['id'] }}-chart" style="height:130px"></canvas>
+                        <div style="height:180px">
+                            <canvas id="{{ $card['id'] }}-chart" style="height:130px"></canvas>
+                        </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
                             <div style="background:var(--bg);border-radius:var(--radius-sm);padding:10px 12px">
                                 <div
@@ -908,8 +926,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
         /* ════════════════════════════════════════════════
-       ANALISIS HARGA — JavaScript
-    ════════════════════════════════════════════════ */
+                           ANALISIS HARGA — JavaScript
+                        ════════════════════════════════════════════════ */
 
         // ── Globals ────────────────────────────────────────────
         const API = (url) => fetch(url).then(r => r.json());
@@ -1042,7 +1060,8 @@
                     const el = document.getElementById(id);
                     if (el) {
                         if (el.tagName === 'CANVAS') {
-                            el.parentElement.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:40px">Gagal memuat data — periksa koneksi atau coba lagi.</p>';
+                            el.parentElement.innerHTML =
+                                '<p style="text-align:center;color:var(--text-muted);padding:40px">Gagal memuat data — periksa koneksi atau coba lagi.</p>';
                         } else {
                             el.textContent = '—';
                         }
@@ -1086,7 +1105,7 @@
                 const cv = ((stdDev / mean) * 100).toFixed(1);
                 document.getElementById('sumVol').textContent = cv + '%';
                 document.getElementById('sumVolLabel').textContent =
-                `CV ± Rp ${Math.round(stdDev).toLocaleString('id-ID')}`;
+                    `CV ± Rp ${Math.round(stdDev).toLocaleString('id-ID')}`;
             }
 
             // Tren 7 hari
@@ -1387,8 +1406,7 @@
                         tooltip: {
                             callbacks: {
                                 label: (ctx) => ctx.datasetIndex === 0 ?
-                                    ` ${rp(ctx.raw)}` :
-                                    ` Rata-rata: ${rp(Math.round(ctx.raw))}`,
+                                    ` ${rp(ctx.raw)}` : ` Rata-rata: ${rp(Math.round(ctx.raw))}`,
                             }
                         }
                     },
@@ -1492,7 +1510,8 @@
 
             if (!data.length) {
                 thead.innerHTML = `<th class="row-header">Provinsi</th>`;
-                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted);font-size:13px">Tidak ada data untuk tanggal ini</td></tr>`;
+                tbody.innerHTML =
+                    `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted);font-size:13px">Tidak ada data untuk tanggal ini</td></tr>`;
                 return;
             }
 
@@ -1530,11 +1549,11 @@
                 const variation = row.harga ? row.harga * (0.8 + ki * 0.1 + Math.random() * 0.2) : null;
                 const h = variation ? Math.round(variation) : null;
                 return `
-                    <td class="heatmap-cell"
-                        style="background:${heatColor(h)};color:${textColor(h)}"
-                        title="${row.provinsi}: ${rp(h)}">
-                        ${h ? rpk(h) : '—'}
-                    </td>`;
+                                        <td class="heatmap-cell"
+                                            style="background:${heatColor(h)};color:${textColor(h)}"
+                                            title="${row.provinsi}: ${rp(h)}">
+                                            ${h ? rpk(h) : '—'}
+                                        </td>`;
             }).join('')}
         </tr>
     `).join('');
