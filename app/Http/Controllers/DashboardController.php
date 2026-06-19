@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Komoditas;
 use App\Models\MasterKomoditas;
+use App\Models\Provinsi;
+use App\Models\ScrapingLog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -244,5 +246,40 @@ class DashboardController extends Controller
     public function data(): View
     {
         return view('dashboard.data');
+    }
+
+    public function scrapingLog(Request $request): View
+    {
+        $query = ScrapingLog::query()->with('provinsi');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('provinsi_id')) {
+            $query->where('provinsi_id', $request->provinsi_id);
+        }
+
+        if ($request->filled('tanggal')) {
+            $query->whereDate('created_at', $request->tanggal);
+        }
+
+        $logs = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
+
+        $totalHariIni  = ScrapingLog::whereDate('created_at', today())->count();
+        $totalSuccess  = ScrapingLog::whereDate('created_at', today())->where('status', 'success')->count();
+        $totalFailed   = ScrapingLog::whereDate('created_at', today())->where('status', 'failed')->count();
+        $lastScraping  = ScrapingLog::whereNotNull('finished_at')->max('finished_at');
+
+        $provinsiList = Provinsi::orderBy('nama')->get(['id_provinsi', 'nama']);
+
+        return view('dashboard.scraping-log', compact(
+            'logs',
+            'totalHariIni',
+            'totalSuccess',
+            'totalFailed',
+            'lastScraping',
+            'provinsiList',
+        ));
     }
 }

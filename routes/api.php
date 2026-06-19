@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\MasterController;
 use App\Http\Controllers\Api\TrenController;
 use App\Http\Controllers\Api\PerProvinsiController;
 use App\Http\Controllers\Api\MapController;
+use App\Http\Controllers\Api\ScrapingLogController;
 
 /*
 |--------------------------------------------------------------------------
@@ -43,9 +44,12 @@ Route::middleware('throttle:60,1')->group(function () {
         Route::get('pasar-map',    [MapController::class, 'pasarMap']);
         // GET /api/komoditas/pasar-map?komoditas_id=1&tanggal=2024-01-15&provinsi_id=35
 
-        Route::get('map',          MapController::class);
+    Route::get('map',          MapController::class);
         // GET /api/komoditas/map?komoditas_id=1&tanggal=2024-01-15&level=provinsi
         // GET /api/komoditas/map?komoditas_id=1&tanggal=2024-01-15&level=kabupaten
     });
 
+    // ── Scraping Log ────────────────────────────────────────────
+    Route::post('scraping/log', [ScrapingLogController::class, 'store']);
+    // POST /api/scraping/log
 });

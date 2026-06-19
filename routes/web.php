@@ -32,4 +32,7 @@ Route::middleware('web')->group(function () {
 
     Route::get('/peta-pasar',     [DashboardController::class, 'petaPasar'])
         ->name('peta-pasar');
+
+    Route::get('/aktivitas-scraping', [DashboardController::class, 'scrapingLog'])
+        ->name('scraping-log');
 });
