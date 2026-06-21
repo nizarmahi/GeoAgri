@@ -312,6 +312,8 @@
             <div class="layer-switch">
                 <button class="layer-btn active" data-layer="kabupaten">Kabupaten/Kota</button>
                 <button class="layer-btn" data-layer="pasar">Pasar</button>
+                <span style="width:1px;height:18px;background:var(--border);margin:0 4px;flex-shrink:0"></span>
+                <button class="layer-btn" data-layer="heatmap">Heatmap</button>
             </div>
         </div>
         <div id="petaPasarMap"></div>
@@ -327,12 +329,19 @@
                 <span class="map-legend-dot" style="background:#2d3bde"></span> Pasar dengan data
                 <span class="map-legend-dot" style="background:#e5e7eb"></span> Tidak ada data
             </span>
+            <span class="map-legend-item" id="legendHeatmap" style="display:none">
+                <span class="map-legend-bar" style="background:#86efac"></span> Rendah
+                <span class="map-legend-bar" style="background:#fde68a"></span> Sedang
+                <span class="map-legend-bar" style="background:#fca5a5"></span> Tinggi
+                <span class="map-legend-bar" style="background:#ef4444"></span> Sangat Tinggi
+            </span>
         </div>
     </div>
 @endsection
 
 @push('scripts')
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script>
         const api = (url) => fetch(url).then(r => r.json());
         const fmt = (n) => n ? 'Rp ' + Number(n).toLocaleString('id-ID') : '—';
@@ -340,10 +349,13 @@
         let leafletMap = null;
         let kabLayer = null;
         let pasarLayer = null;
+        let heatLayer = null;
         let currentLayer = 'kabupaten';
 
         function initMap() {
-            leafletMap = L.map('petaPasarMap', { zoomControl: true }).setView([-2.5, 118], 5);
+            leafletMap = L.map('petaPasarMap', {
+                zoomControl: true
+            }).setView([-2.5, 118], 5);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; OpenStreetMap, &copy; CartoDB',
                 subdomains: 'abcd',
@@ -364,15 +376,20 @@
             const komoditasId = document.getElementById('filterKomoditas').value;
             const provinsiId = document.getElementById('filterProvinsi').value;
             const tanggal = document.getElementById('filterTanggal').value;
+            const komoditasNama = document.getElementById('filterKomoditas').selectedOptions[0].text;
 
             const [kabRes, pasarRes] = await Promise.all([
                 api(`/api/komoditas/map?komoditas_id=${komoditasId}&tanggal=${tanggal}&level=kabupaten`),
-                api(`/api/komoditas/pasar-map?komoditas_id=${komoditasId}&tanggal=${tanggal}${provinsiId ? '&provinsi_id=' + provinsiId : ''}`)
+                api(
+                    `/api/komoditas/pasar-map?komoditas_id=${komoditasId}&tanggal=${tanggal}${provinsiId ? '&provinsi_id=' + provinsiId : ''}`
+                ),
+                loadHeatmapData(komoditasNama)
             ]);
 
             updateStats(kabRes, pasarRes);
             renderKabLayer(kabRes);
             renderPasarLayer(pasarRes);
+
             switchLayer(currentLayer);
         }
 
@@ -397,9 +414,9 @@
             document.getElementById('statKabupaten').textContent = kabFeatures.length.toLocaleString();
             document.getElementById('statProvinsi').textContent = provinsiSet.size.toLocaleString();
 
-            const avg = hargaList.length
-                ? Math.round(hargaList.reduce((a, b) => a + b, 0) / hargaList.length)
-                : 0;
+            const avg = hargaList.length ?
+                Math.round(hargaList.reduce((a, b) => a + b, 0) / hargaList.length) :
+                0;
             document.getElementById('statRataHarga').textContent = avg ? fmt(avg) : '—';
         }
 
@@ -434,7 +451,10 @@
                             </div>
                         </div>
                     `);
-                    layer.on('mouseover', () => layer.setStyle({ fillOpacity: 0.9, weight: 2 }));
+                    layer.on('mouseover', () => layer.setStyle({
+                        fillOpacity: 0.9,
+                        weight: 2
+                    }));
                     layer.on('mouseout', () => kabLayer.resetStyle(layer));
                 }
             });
@@ -474,27 +494,80 @@
             });
         }
 
+        function loadHeatmapData(komoditasNama) {
+            if (!komoditasNama) {
+                komoditasNama = document.getElementById('filterKomoditas').selectedOptions[0].text;
+            }
+            return api(`/api/komoditas/heatmap?komoditas=${encodeURIComponent(komoditasNama)}`)
+                .then(res => {
+                    renderHeatmapLayer(res);
+                    return res;
+                })
+                .catch(err => console.error('Gagal memuat heatmap:', err));
+        }
+
+        function renderHeatmapLayer(res) {
+            if (heatLayer) {
+                leafletMap.removeLayer(heatLayer);
+                heatLayer = null;
+            }
+
+            const features = res.features || [];
+            const points = [];
+
+            features.forEach(f => {
+                if (f.geometry?.type !== 'Point') return;
+                const [lng, lat] = f.geometry.coordinates;
+                const val = f.properties?.value ?? f.properties?.harga ?? f.properties?.intensity ?? 1;
+                const intensity = val > 0 ? Math.min(val / 50000, 1) : 0.5;
+                points.push([lat, lng, intensity]);
+            });
+
+            if (points.length) {
+                heatLayer = L.heatLayer(points, {
+                    radius: 30,
+                    blur: 20,
+                    maxZoom: 10,
+                    gradient: {
+                        0.0: '#86efac',
+                        0.4: '#fde68a',
+                        0.7: '#fca5a5',
+                        1.0: '#ef4444'
+                    }
+                });
+            }
+        }
+
         function switchLayer(layer) {
             currentLayer = layer;
 
-            if (kabLayer) {
-                if (layer === 'kabupaten') {
-                    leafletMap.addLayer(kabLayer);
-                } else {
-                    leafletMap.removeLayer(kabLayer);
-                }
-            }
+            if (layer === 'heatmap') {
+                if (kabLayer) leafletMap.removeLayer(kabLayer);
+                if (pasarLayer) leafletMap.removeLayer(pasarLayer);
+                if (heatLayer) leafletMap.addLayer(heatLayer);
+            } else {
+                if (heatLayer) leafletMap.removeLayer(heatLayer);
 
-            if (pasarLayer) {
-                if (layer === 'pasar') {
-                    leafletMap.addLayer(pasarLayer);
-                } else {
-                    leafletMap.removeLayer(pasarLayer);
+                if (kabLayer) {
+                    if (layer === 'kabupaten') {
+                        leafletMap.addLayer(kabLayer);
+                    } else {
+                        leafletMap.removeLayer(kabLayer);
+                    }
+                }
+
+                if (pasarLayer) {
+                    if (layer === 'pasar') {
+                        leafletMap.addLayer(pasarLayer);
+                    } else {
+                        leafletMap.removeLayer(pasarLayer);
+                    }
                 }
             }
 
             document.getElementById('legendKab').style.display = layer === 'kabupaten' ? '' : 'none';
             document.getElementById('legendPasar').style.display = layer === 'pasar' ? '' : 'none';
+            document.getElementById('legendHeatmap').style.display = layer === 'heatmap' ? '' : 'none';
 
             document.querySelectorAll('.layer-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.layer === layer);

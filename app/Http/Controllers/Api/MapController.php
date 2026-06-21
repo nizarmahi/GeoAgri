@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Komoditas;
 use Carbon\Carbon;
+use Illuminate\Http\Client\HttpClientException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class MapController extends Controller
 {
@@ -96,7 +98,7 @@ class MapController extends Controller
 
             $harga = $hargaMap->get($geo->provinsi_id);
 
-            if (! $harga) continue; // Hanya tampilkan provinsi yang punya data harga
+            // if (! $harga) continue;
 
             $features[] = [
                 'type'       => 'Feature',
@@ -164,6 +166,7 @@ class MapController extends Controller
                 'provinsi.nama',
                 'provinsi.id_provinsi'
             );
+        // dd($query->toSql(), $query->getBindings());
 
         if ($provinsiId) {
             $query->where('kab_kota.provinsi_id', $provinsiId);
@@ -279,5 +282,45 @@ class MapController extends Controller
                 'total_features' => count($features),
             ],
         ];
+    }
+
+    // ── Proxy Heatmap API Eksternal ──────────────────────────
+
+    /**
+     * GET /api/komoditas/heatmap
+     *
+     * Proxy ke API eksternal untuk menghindari CORS.
+     * Forward: http://labai.polinema.ac.id:1901/api/heatmap?komoditas=...
+     */
+    public function heatmapProxy(Request $request): JsonResponse
+    {
+        $komoditas = $request->input('komoditas');
+
+        if (! $komoditas) {
+            return response()->json([
+                'error' => 'Parameter "komoditas" wajib diisi.'
+            ], 422);
+        }
+
+        $externalUrl = 'http://labai.polinema.ac.id:1901/api/heatmap?komoditas=' . urlencode($komoditas);
+
+        try {
+            $response = Http::timeout(30)->get($externalUrl);
+
+            if ($response->failed()) {
+                return response()->json([
+                    'error' => 'Gagal mengambil data dari server eksternal.',
+                    'status' => $response->status(),
+                ], $response->status());
+            }
+
+            $data = $response->json();
+
+            return response()->json($data);
+        } catch (HttpClientException $e) {
+            return response()->json([
+                'error' => 'Koneksi ke server eksternal gagal: ' . $e->getMessage(),
+            ], 502);
+        }
     }
 }

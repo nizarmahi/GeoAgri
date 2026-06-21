@@ -44,9 +44,13 @@ Route::middleware('throttle:60,1')->group(function () {
         Route::get('pasar-map',    [MapController::class, 'pasarMap']);
         // GET /api/komoditas/pasar-map?komoditas_id=1&tanggal=2024-01-15&provinsi_id=35
 
-    Route::get('map',          MapController::class);
+        Route::get('map',          MapController::class);
         // GET /api/komoditas/map?komoditas_id=1&tanggal=2024-01-15&level=provinsi
         // GET /api/komoditas/map?komoditas_id=1&tanggal=2024-01-15&level=kabupaten
+
+        Route::get('heatmap',    [MapController::class, 'heatmapProxy']);
+        // GET /api/komoditas/heatmap?komoditas=BUNCIS
+        // Proxy ke API eksternal http://labai.polinema.ac.id:1901/api/heatmap
     });
 
     // ── Scraping Log ────────────────────────────────────────────

@@ -15,13 +15,16 @@ class ScrapingLogController extends Controller
             'workflow_name' => 'required|string|max:255',
             'provinsi_id'   => 'nullable|integer|exists:provinsi,id_provinsi',
             'status'        => 'required|in:success,failed,running',
-            'total_pasar'   => 'nullable|integer|min:0',
-            'total_data'    => 'nullable|integer|min:0',
-            'total_insert'  => 'nullable|integer|min:0',
-            'total_skip'    => 'nullable|integer|min:0',
-            'error_message' => 'nullable|string',
-            'started_at'    => 'nullable|date',
-            'finished_at'   => 'nullable|date|after_or_equal:started_at',
+            'total_pasar'        => 'nullable|integer|min:0',
+            'total_data'         => 'nullable|integer|min:0',
+            'total_insert'       => 'nullable|integer|min:0',
+            'total_skip'         => 'nullable|integer|min:0',
+            'total_insert_pasar' => 'nullable|integer|min:0',
+            'total_gagal'        => 'nullable|integer|min:0',
+            'failed_markets'     => 'nullable|json',
+            'error_message'      => 'nullable|string',
+            'started_at'         => 'nullable|date',
+            'finished_at'        => 'nullable|date|after_or_equal:started_at',
         ]);
 
         $started  = $validated['started_at'] ?? null;
