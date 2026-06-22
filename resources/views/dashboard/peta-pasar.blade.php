@@ -250,6 +250,44 @@
             font-family: var(--mono);
             color: var(--primary);
         }
+
+        .map-wrap {
+            position: relative;
+        }
+
+        #mapLoading {
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,.65);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            backdrop-filter: blur(1px);
+        }
+
+        #mapLoading.active {
+            display: flex;
+        }
+
+        .map-loading-spinner {
+            width: 38px;
+            height: 38px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: mapSpin .7s linear infinite;
+        }
+
+        @keyframes mapSpin {
+            to { transform: rotate(360deg); }
+        }
+
+        .filter-btn:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
     </style>
 @endpush
 
@@ -316,7 +354,10 @@
                 <button class="layer-btn" data-layer="heatmap">Heatmap</button>
             </div>
         </div>
-        <div id="petaPasarMap"></div>
+        <div class="map-wrap">
+            <div id="petaPasarMap"></div>
+            <div id="mapLoading"><div class="map-loading-spinner"></div></div>
+        </div>
         <div class="map-legend" id="mapLegend">
             <span class="map-legend-item" id="legendKab">
                 <span class="map-legend-bar" style="background:#86efac"></span> Rendah
@@ -348,6 +389,7 @@
 
         let leafletMap = null;
         let kabLayer = null;
+        let kabOutlineLayer = null;
         let pasarLayer = null;
         let heatLayer = null;
         let currentLayer = 'kabupaten';
@@ -356,8 +398,23 @@
             leafletMap = L.map('petaPasarMap', {
                 zoomControl: true
             }).setView([-2.5, 118], 5);
+
+            // 1. Layer Peta Dasar (Abu-abu polos, tanpa teks) ditaruh paling bawah
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; OpenStreetMap, &copy; CartoDB',
+                subdomains: 'abcd',
+                maxZoom: 19,
+            }).addTo(leafletMap);
+
+            // 2. Buat "Pane" (lapisan) khusus untuk teks agar selalu berada di atas choropleth
+            leafletMap.createPane('labels');
+            leafletMap.getPane('labels').style.zIndex = 450;
+            // Pointer events di-set 'none' agar interaksi (hover/klik popup) tetap tembus ke layer data di bawahnya
+            leafletMap.getPane('labels').style.pointerEvents = 'none';
+
+            // 3. Tambahkan Layer khusus Teks (Label Nama Kota/Kabupaten) ke dalam pane tersebut
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+                pane: 'labels',
                 subdomains: 'abcd',
                 maxZoom: 19,
             }).addTo(leafletMap);
@@ -373,24 +430,37 @@
         }
 
         async function loadData() {
-            const komoditasId = document.getElementById('filterKomoditas').value;
-            const provinsiId = document.getElementById('filterProvinsi').value;
-            const tanggal = document.getElementById('filterTanggal').value;
-            const komoditasNama = document.getElementById('filterKomoditas').selectedOptions[0].text;
+            const btn = document.getElementById('btnTerapkan');
+            const loading = document.getElementById('mapLoading');
+            btn.disabled = true;
+            btn.textContent = 'Memuat...';
+            loading.classList.add('active');
 
-            const [kabRes, pasarRes] = await Promise.all([
-                api(`/api/komoditas/map?komoditas_id=${komoditasId}&tanggal=${tanggal}&level=kabupaten`),
-                api(
-                    `/api/komoditas/pasar-map?komoditas_id=${komoditasId}&tanggal=${tanggal}${provinsiId ? '&provinsi_id=' + provinsiId : ''}`
-                ),
-                loadHeatmapData(komoditasNama)
-            ]);
+            try {
+                const komoditasId = document.getElementById('filterKomoditas').value;
+                const provinsiId = document.getElementById('filterProvinsi').value;
+                const tanggal = document.getElementById('filterTanggal').value;
+                const komoditasNama = document.getElementById('filterKomoditas').selectedOptions[0].text;
 
-            updateStats(kabRes, pasarRes);
-            renderKabLayer(kabRes);
-            renderPasarLayer(pasarRes);
+                const [kabRes, pasarRes] = await Promise.all([
+                    api(`/api/komoditas/map?komoditas_id=${komoditasId}&tanggal=${tanggal}&level=kabupaten`),
+                    api(
+                        `/api/komoditas/pasar-map?komoditas_id=${komoditasId}&tanggal=${tanggal}${provinsiId ? '&provinsi_id=' + provinsiId : ''}`
+                    ),
+                    loadHeatmapData(komoditasNama)
+                ]);
 
-            switchLayer(currentLayer);
+                updateStats(kabRes, pasarRes);
+                renderKabLayer(kabRes);
+                renderKabOutlineLayer(kabRes);
+                renderPasarLayer(pasarRes);
+
+                switchLayer(currentLayer);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Terapkan';
+                loading.classList.remove('active');
+            }
         }
 
         function updateStats(kabRes, pasarRes) {
@@ -492,6 +562,23 @@
                     `);
                 }
             });
+        }
+
+        function renderKabOutlineLayer(res) {
+            if (kabOutlineLayer) {
+                leafletMap.removeLayer(kabOutlineLayer);
+            }
+            kabOutlineLayer = L.geoJSON(res, {
+                style: {
+                    fillColor: 'transparent',
+                    fillOpacity: 0,
+                    color: '#6b7280',
+                    weight: 0.8,
+                    opacity: 0.5,
+                },
+                interactive: false,
+            });
+            leafletMap.addLayer(kabOutlineLayer);
         }
 
         function loadHeatmapData(komoditasNama) {

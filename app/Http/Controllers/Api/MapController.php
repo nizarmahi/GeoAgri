@@ -87,7 +87,7 @@ class MapController extends Controller
                 ")
             )
             ->whereNotNull('geom')
-            ->groupBy('provinsi_id')
+            ->groupBy('provinsi_id', 'kab_kota.geom')
             ->get();
 
         $features = [];
@@ -267,10 +267,8 @@ class MapController extends Controller
                     'has_data'      => ! is_null($harga),
                 ],
             ];
-            // dd($features);
-        }
 
-        // dd($features);
+        }
 
         return [
             'type'     => 'FeatureCollection',
