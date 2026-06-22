@@ -179,6 +179,13 @@
             color: var(--text-muted);
         }
 
+        .legend-range {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--text-light);
+            margin-right: 4px;
+        }
+
         .map-legend-dot {
             width: 12px;
             height: 12px;
@@ -251,6 +258,36 @@
             color: var(--primary);
         }
 
+        .popup-weather {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--text-muted);
+        }
+
+        .popup-weather .weather-icon {
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        .popup-weather .weather-temp {
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .popup-weather .weather-desc {
+            font-weight: 500;
+        }
+
+        .popup-weather .weather-loading {
+            color: var(--text-light);
+            font-style: italic;
+        }
+
         .map-wrap {
             position: relative;
         }
@@ -258,7 +295,7 @@
         #mapLoading {
             position: absolute;
             inset: 0;
-            background: rgba(255,255,255,.65);
+            background: rgba(255, 255, 255, .65);
             z-index: 1000;
             display: none;
             align-items: center;
@@ -281,7 +318,9 @@
         }
 
         @keyframes mapSpin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .filter-btn:disabled {
@@ -356,19 +395,34 @@
         </div>
         <div class="map-wrap">
             <div id="petaPasarMap"></div>
-            <div id="mapLoading"><div class="map-loading-spinner"></div></div>
+            <div id="mapLoading">
+                <div class="map-loading-spinner"></div>
+            </div>
         </div>
         <div class="map-legend" id="mapLegend">
             <span class="map-legend-item" id="legendKab">
-                <span class="map-legend-bar" style="background:#86efac"></span> Rendah
-                <span class="map-legend-bar" style="background:#fde68a"></span> Sedang
-                <span class="map-legend-bar" style="background:#fca5a5"></span> Tinggi
-                <span class="map-legend-bar" style="background:#ef4444"></span> Sangat Tinggi
-                <span class="map-legend-bar" style="background:#e5e7eb"></span> Tidak Ada Data
+                <span class="map-legend-bar" style="background:#86efac"></span>
+                Rendah <span class="legend-range" id="rangeRendah"></span>
+                <span class="map-legend-bar" style="background:#fde68a"></span>
+                Sedang <span class="legend-range" id="rangeSedang"></span>
+                <span class="map-legend-bar" style="background:#fca5a5"></span>
+                Tinggi <span class="legend-range" id="rangeTinggi"></span>
+                <span class="map-legend-bar" style="background:#ef4444"></span>
+                Sangat Tinggi <span class="legend-range" id="rangeSangatTinggi"></span>
+                <span class="map-legend-bar" style="background:#e5e7eb"></span>
+                Tidak Ada Data
             </span>
             <span class="map-legend-item" id="legendPasar" style="display:none">
-                <span class="map-legend-dot" style="background:#2d3bde"></span> Pasar dengan data
-                <span class="map-legend-dot" style="background:#e5e7eb"></span> Tidak ada data
+                <span class="map-legend-dot" style="background:#86efac"></span>
+                Rendah <span class="legend-range" id="rangePasarRendah"></span>
+                <span class="map-legend-dot" style="background:#fde68a"></span>
+                Sedang <span class="legend-range" id="rangePasarSedang"></span>
+                <span class="map-legend-dot" style="background:#fca5a5"></span>
+                Tinggi <span class="legend-range" id="rangePasarTinggi"></span>
+                <span class="map-legend-dot" style="background:#ef4444"></span>
+                Sangat Tinggi <span class="legend-range" id="rangePasarSangatTinggi"></span>
+                <span class="map-legend-dot" style="background:#e5e7eb"></span>
+                Tidak Ada Data
             </span>
             <span class="map-legend-item" id="legendHeatmap" style="display:none">
                 <span class="map-legend-bar" style="background:#86efac"></span> Rendah
@@ -429,6 +483,52 @@
             return '#ef4444';
         }
 
+        function fmtPrice(val) {
+            if (val == null || val <= 0) return '';
+            return 'Rp ' + Number(val).toLocaleString('id-ID');
+        }
+
+        function updateLegend(min, max) {
+            const labels = ['rangeRendah', 'rangeSedang', 'rangeTinggi', 'rangeSangatTinggi'];
+            const pasarLabels = ['rangePasarRendah', 'rangePasarSedang', 'rangePasarTinggi', 'rangePasarSangatTinggi'];
+
+            if (!min && !max) {
+                labels.forEach(id => document.getElementById(id).textContent = '');
+                pasarLabels.forEach(id => document.getElementById(id).textContent = '');
+                return;
+            }
+
+            const thresholds = [{
+                    lo: min,
+                    hi: min + (max - min) * 0.25
+                },
+                {
+                    lo: min + (max - min) * 0.25 + 1,
+                    hi: min + (max - min) * 0.50
+                },
+                {
+                    lo: min + (max - min) * 0.50 + 1,
+                    hi: min + (max - min) * 0.75
+                },
+                {
+                    lo: min + (max - min) * 0.75 + 1,
+                    hi: max
+                },
+            ];
+
+            if (min === max) {
+                labels.forEach(id => document.getElementById(id).textContent = fmtPrice(min));
+                pasarLabels.forEach(id => document.getElementById(id).textContent = fmtPrice(min));
+                return;
+            }
+
+            thresholds.forEach((t, i) => {
+                const text = fmtPrice(t.lo) + ' \u2013 ' + fmtPrice(t.hi);
+                document.getElementById(labels[i]).textContent = text;
+                document.getElementById(pasarLabels[i]).textContent = text;
+            });
+        }
+
         async function loadData() {
             const btn = document.getElementById('btnTerapkan');
             const loading = document.getElementById('mapLoading');
@@ -450,12 +550,31 @@
                     loadHeatmapData(komoditasNama)
                 ]);
 
+                const hargaList = (kabRes.features || [])
+                    .map(f => f.properties.harga)
+                    .filter(Boolean);
+                const kabMin = hargaList.length ? Math.min(...hargaList) : 0;
+                const kabMax = hargaList.length ? Math.max(...hargaList) : 0;
+
                 updateStats(kabRes, pasarRes);
-                renderKabLayer(kabRes);
+                renderKabLayer(kabRes, kabMin, kabMax);
                 renderKabOutlineLayer(kabRes);
-                renderPasarLayer(pasarRes);
+                renderPasarLayer(pasarRes, kabMin, kabMax);
+                updateLegend(kabMin, kabMax);
 
                 switchLayer(currentLayer);
+
+                if (kabLayer && kabLayer.getBounds().isValid()) {
+                    leafletMap.fitBounds(kabLayer.getBounds(), {
+                        padding: [30, 30],
+                        maxZoom: 10
+                    });
+                } else if (pasarLayer && pasarLayer.getBounds().isValid()) {
+                    leafletMap.fitBounds(pasarLayer.getBounds(), {
+                        padding: [30, 30],
+                        maxZoom: 12
+                    });
+                }
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Terapkan';
@@ -490,20 +609,14 @@
             document.getElementById('statRataHarga').textContent = avg ? fmt(avg) : '—';
         }
 
-        function renderKabLayer(res) {
+        function renderKabLayer(res, kabMin, kabMax) {
             if (kabLayer) {
                 leafletMap.removeLayer(kabLayer);
             }
 
-            const hargaList = (res.features || [])
-                .map(f => f.properties.harga)
-                .filter(Boolean);
-            const min = hargaList.length ? Math.min(...hargaList) : 0;
-            const max = hargaList.length ? Math.max(...hargaList) : 0;
-
             kabLayer = L.geoJSON(res, {
                 style: (feature) => ({
-                    fillColor: getColor(feature.properties.harga, min, max),
+                    fillColor: getColor(feature.properties.harga, kabMin, kabMax),
                     fillOpacity: 0.7,
                     color: '#fff',
                     weight: 1.2,
@@ -519,8 +632,17 @@
                             <div style="font-size:12px;color:var(--text-muted);margin-top:2px">
                                 ${p.jumlah_pasar} pasar
                             </div>
+                            <div class="popup-weather" id="wk-${p.id}">
+                                <span class="weather-loading">Memuat cuaca...</span>
+                            </div>
                         </div>
                     `);
+
+                    layer.on('popupopen', () => {
+                        const center = layer.getBounds().getCenter();
+                        fetchWeather(center.lat, center.lng, 'wk-' + p.id);
+                    });
+
                     layer.on('mouseover', () => layer.setStyle({
                         fillOpacity: 0.9,
                         weight: 2
@@ -530,7 +652,7 @@
             });
         }
 
-        function renderPasarLayer(res) {
+        function renderPasarLayer(res, kabMin, kabMax) {
             if (pasarLayer) {
                 leafletMap.removeLayer(pasarLayer);
             }
@@ -538,7 +660,7 @@
             pasarLayer = L.geoJSON(res, {
                 pointToLayer: (feature, latlng) => {
                     const p = feature.properties;
-                    const color = p.harga ? '#2d3bde' : '#e5e7eb';
+                    const color = p.harga ? getColor(p.harga, kabMin, kabMax) : '#e5e7eb';
                     return L.circleMarker(latlng, {
                         radius: 7,
                         fillColor: color,
@@ -549,6 +671,9 @@
                 },
                 onEachFeature: (feature, layer) => {
                     const p = feature.properties;
+                    const coords = feature.geometry.coordinates;
+                    const weatherId = 'w' + (p.id || Math.random().toString(36).slice(2, 8));
+
                     layer.bindPopup(`
                         <div class="map-popup">
                             <div class="map-popup-name">${p.nama}</div>
@@ -558,8 +683,15 @@
                             <div style="font-size:12px;color:var(--text-muted);margin-top:2px">
                                 ${p.total_records} record
                             </div>
+                            <div class="popup-weather" id="${weatherId}">
+                                <span class="weather-loading">Memuat cuaca...</span>
+                            </div>
                         </div>
                     `);
+
+                    layer.on('popupopen', () => {
+                        fetchWeather(coords[1], coords[0], weatherId);
+                    });
                 }
             });
         }
@@ -579,6 +711,74 @@
                 interactive: false,
             });
             leafletMap.addLayer(kabOutlineLayer);
+        }
+
+        function getWeatherIcon(code) {
+            if (code === 0) return '\u2600\uFE0F';
+            if (code <= 2) return '\u26C5';
+            if (code === 3 || code >= 45) return '\u2601\uFE0F';
+            if (code >= 51 && code <= 55) return '\uD83C\uDF26\uFE0F';
+            if (code >= 61 && code <= 65) return '\uD83C\uDF27\uFE0F';
+            if (code >= 71 && code <= 75) return '\u2744\uFE0F';
+            if (code >= 80 && code <= 82) return '\uD83C\uDF27\uFE0F';
+            if (code >= 95) return '\u26C8\uFE0F';
+            return '\uD83C\uDF24\uFE0F';
+        }
+
+        function getWeatherDesc(code) {
+            const map = {
+                0: 'Cerah',
+                1: 'Cerah berawan',
+                2: 'Berawan',
+                3: 'Mendung',
+                45: 'Berkabut',
+                48: 'Kabut beku',
+                51: 'Gerimis ringan',
+                53: 'Gerimis',
+                55: 'Gerimis deras',
+                56: 'Gerimis beku ringan',
+                57: 'Gerimis beku',
+                61: 'Hujan ringan',
+                63: 'Hujan',
+                65: 'Hujan deras',
+                66: 'Hujan beku ringan',
+                67: 'Hujan beku',
+                71: 'Salju ringan',
+                73: 'Salju',
+                75: 'Salju deras',
+                77: 'Butiran salju',
+                80: 'Hujan ringan',
+                81: 'Hujan',
+                82: 'Hujan deras',
+                85: 'Salju ringan',
+                86: 'Salju deras',
+                95: 'Badai',
+                96: 'Badai',
+                99: 'Badai'
+            };
+            return map[code] || 'Tidak diketahui';
+        }
+
+        function fetchWeather(lat, lng, elId) {
+            const el = document.getElementById(elId);
+            if (!el || el.dataset.loaded) return;
+            el.dataset.loaded = 'true';
+
+            fetch(
+                    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&timezone=auto`)
+                .then(r => r.json())
+                .then(data => {
+                    const temp = data.current.temperature_2m;
+                    const code = data.current.weather_code;
+                    el.innerHTML = `
+                        <span class="weather-icon">${getWeatherIcon(code)}</span>
+                        <span class="weather-temp">${Math.round(temp)}\u00B0C</span>
+                        <span class="weather-desc">${getWeatherDesc(code)}</span>
+                    `;
+                })
+                .catch(() => {
+                    el.innerHTML = '<span style="color:var(--text-light)">Cuaca tidak tersedia</span>';
+                });
         }
 
         function loadHeatmapData(komoditasNama) {
