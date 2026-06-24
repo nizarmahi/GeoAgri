@@ -183,6 +183,8 @@ class DashboardController extends Controller
 
         if ($tanggal) {
             $query->whereDate('komoditas.tanggal', $tanggal);
+        } else {
+            $query->where('komoditas.tanggal', '>=', now()->subDays(30));
         }
 
         $pasarData = $query->orderByDesc('null_records')
@@ -220,6 +222,8 @@ class DashboardController extends Controller
             ? DB::table('provinsi')->where('id_provinsi', $provinsiId)->value('nama')
             : null;
 
+        $tanggalDefault = !$request->input('tanggal');
+
         return view('dashboard.analisis-pasar', compact(
             'pasarData',
             'komoditasList',
@@ -228,7 +232,8 @@ class DashboardController extends Controller
             'provinsiId',
             'tanggal',
             'selectedKomoditas',
-            'selectedProvinsi'
+            'selectedProvinsi',
+            'tanggalDefault'
         ));
     }
 

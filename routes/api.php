@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\TrenController;
 use App\Http\Controllers\Api\PerProvinsiController;
 use App\Http\Controllers\Api\MapController;
 use App\Http\Controllers\Api\ScrapingLogController;
+use App\Http\Controllers\Api\NullAnalysisController;
+use App\Http\Controllers\Api\PasarAnalysisController;
 
 /*
 |--------------------------------------------------------------------------
@@ -51,9 +53,32 @@ Route::middleware('throttle:60,1')->group(function () {
         Route::get('heatmap',    [MapController::class, 'heatmapProxy']);
         // GET /api/komoditas/heatmap?komoditas=BUNCIS
         // Proxy ke API eksternal http://labai.polinema.ac.id:1901/api/heatmap
+
+        // ── Null Analysis ──────────────────────────────────────────────
+        Route::get('null-stats',        [NullAnalysisController::class, 'stats']);
+        // GET /api/komoditas/null-stats
+
+        Route::get('null-timeline',     [NullAnalysisController::class, 'timeline']);
+        // GET /api/komoditas/null-timeline?days=7
+
+        Route::get('null-by-pasar',     [NullAnalysisController::class, 'byPasar']);
+        // GET /api/komoditas/null-by-pasar?per_page=5
+
+        Route::get('null-batches',      [NullAnalysisController::class, 'batches']);
+        // GET /api/komoditas/null-batches?limit=4
+
+        Route::get('null-by-komoditas', [NullAnalysisController::class, 'byKomoditas']);
+        // GET /api/komoditas/null-by-komoditas
+
+        // ── Pasar Analysis ─────────────────────────────────────────────
+        Route::get('analisis-pasar', PasarAnalysisController::class);
+        // GET /api/komoditas/analisis-pasar?komoditas_id=&provinsi_id=&tanggal=&per_page=10
     });
 
     // ── Scraping Log ────────────────────────────────────────────
+    Route::get('scraping/logs', [ScrapingLogController::class, 'index']);
+    // GET /api/scraping/logs?status=&provinsi_id=&tanggal=&per_page=15
+
     Route::post('scraping/log', [ScrapingLogController::class, 'store']);
     // POST /api/scraping/log
 });

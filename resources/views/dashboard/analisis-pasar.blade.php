@@ -400,7 +400,7 @@
     </form>
 
     {{-- ── Info Bar ─────────────────────────────────── --}}
-    @if ($selectedKomoditas || $selectedProvinsi || $tanggal)
+    @if ($selectedKomoditas || $selectedProvinsi || $tanggal || $tanggalDefault)
         <div class="info-bar">
             @if ($selectedKomoditas)
                 <span>Komoditas: <strong>{{ $selectedKomoditas }}</strong></span>
@@ -408,7 +408,9 @@
             @if ($selectedProvinsi)
                 <span>Provinsi: <strong>{{ $selectedProvinsi }}</strong></span>
             @endif
-            @if ($tanggal)
+            @if ($tanggalDefault)
+                <span>Periode: <strong>30 hari terakhir</strong></span>
+            @elseif ($tanggal)
                 <span>Tanggal: <strong>{{ \Carbon\Carbon::parse($tanggal)->format('d/m/Y') }}</strong></span>
             @endif
         </div>
