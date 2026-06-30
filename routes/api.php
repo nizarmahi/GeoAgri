@@ -27,6 +27,9 @@ Route::middleware('throttle:60,1')->group(function () {
         Route::get('provinsi',  [MasterController::class, 'provinsi']);
         // GET /api/master/provinsi
 
+        Route::get('kabkota',   [MasterController::class, 'kabkota']);
+        // GET /api/master/kabkota?provinsi_id=35
+
         Route::get('pasar',     [MasterController::class, 'pasar']);
         // GET /api/master/pasar
     });

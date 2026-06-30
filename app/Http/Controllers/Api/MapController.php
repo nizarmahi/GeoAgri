@@ -33,20 +33,23 @@ class MapController extends Controller
 
         // ── Validasi ─────────────────────────────────────────
         $validated = $request->validate([
-            'komoditas_id' => 'required|integer|exists:master_komoditas,id_master_komoditas',
-            'tanggal'      => 'nullable|date',
-            'level'        => 'nullable|in:provinsi,kabupaten',
+            'komoditas_id'  => 'required|integer|exists:master_komoditas,id_master_komoditas',
+            'tanggal'       => 'nullable|date',
+            'level'         => 'nullable|in:provinsi,kabupaten',
+            'provinsi_ids'  => 'nullable|array',
+            'provinsi_ids.*' => 'integer|exists:provinsi,id_provinsi',
         ]);
 
-        $komoditasId = (int) $validated['komoditas_id'];
-        $tanggal     = $validated['tanggal'] ?? now()->toDateString();
-        $level       = $validated['level']   ?? 'provinsi';
+        $komoditasId  = (int) $validated['komoditas_id'];
+        $tanggal      = $validated['tanggal'] ?? now()->toDateString();
+        $level        = $validated['level']   ?? 'provinsi';
+        $provinsiIds  = $validated['provinsi_ids'] ?? null;
 
-        $cacheKey = "map:{$level}:{$komoditasId}:{$tanggal}";
+        $cacheKey = "map:{$level}:{$komoditasId}:{$tanggal}:" . ($provinsiIds ? implode(',', $provinsiIds) : 'all');
 
-        $geojson = Cache::remember($cacheKey, 600, function () use ($komoditasId, $tanggal, $level) {
+        $geojson = Cache::remember($cacheKey, 600, function () use ($komoditasId, $tanggal, $level, $provinsiIds) {
             return $level === 'provinsi'
-                ? $this->buildProvinsiGeoJSON($komoditasId, $tanggal)
+                ? $this->buildProvinsiGeoJSON($komoditasId, $tanggal, $provinsiIds)
                 : $this->buildKabupatenGeoJSON($komoditasId, $tanggal);
         });
 
@@ -55,15 +58,21 @@ class MapController extends Controller
 
     // ── GeoJSON Level Provinsi ────────────────────────────────
 
-    private function buildProvinsiGeoJSON(int $komoditasId, string $tanggal): array
+    private function buildProvinsiGeoJSON(int $komoditasId, string $tanggal, ?array $provinsiIds = null): array
     {
-        $hargaMap = Komoditas::query()
+        $hargaQuery = Komoditas::query()
             ->filterKomoditas($komoditasId)
             ->where('tanggal', '>=', $tanggal)
             ->where('tanggal', '<', Carbon::parse($tanggal)->addDay()->toDateString())
             ->validHarga()
             ->join('pasar', 'komoditas.pasar_id', '=', 'pasar.id')
-            ->join('kab_kota', 'pasar.kabkota_id', '=', 'kab_kota.id')
+            ->join('kab_kota', 'pasar.kabkota_id', '=', 'kab_kota.id');
+
+        if ($provinsiIds) {
+            $hargaQuery->whereIn('kab_kota.provinsi_id', $provinsiIds);
+        }
+
+        $hargaMap = $hargaQuery
             ->select(
                 'kab_kota.provinsi_id',
                 DB::raw('ROUND(AVG(komoditas.harga)) AS harga'),
@@ -76,17 +85,22 @@ class MapController extends Controller
         $provinsiNama = DB::table('provinsi')
             ->pluck('nama', 'id_provinsi');
 
-        $geometries = DB::table('kab_kota')
+        $geoQuery = DB::table('kab_kota')
             ->select(
                 'provinsi_id',
-                // DB::raw("ST_AsGeoJSON(ST_Union(geom)) AS geojson")
                 DB::raw("
                     ST_AsGeoJSON(
                         ST_SimplifyPreserveTopology(geom, 0.05)
                     ) AS geojson
                 ")
             )
-            ->whereNotNull('geom')
+            ->whereNotNull('geom');
+
+        if ($provinsiIds) {
+            $geoQuery->whereIn('provinsi_id', $provinsiIds);
+        }
+
+        $geometries = $geoQuery
             ->groupBy('provinsi_id', 'kab_kota.geom')
             ->get();
 
@@ -130,14 +144,19 @@ class MapController extends Controller
     public function pasarMap(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'komoditas_id' => 'required|integer|exists:master_komoditas,id_master_komoditas',
-            'tanggal'      => 'nullable|date',
-            'provinsi_id'  => 'nullable|integer|exists:provinsi,id_provinsi',
+            'komoditas_id'  => 'required|integer|exists:master_komoditas,id_master_komoditas',
+            'tanggal'       => 'nullable|date',
+            'provinsi_id'   => 'nullable|integer|exists:provinsi,id_provinsi',
+            'provinsi_ids'  => 'nullable|array',
+            'provinsi_ids.*' => 'integer|exists:provinsi,id_provinsi',
+            'kabkota_id'    => 'nullable|integer|exists:kab_kota,id',
         ]);
 
-        $komoditasId = (int) $validated['komoditas_id'];
-        $tanggal     = $validated['tanggal'] ?? now()->toDateString();
-        $provinsiId  = $request->integer('provinsi_id') ?: null;
+        $komoditasId  = (int) $validated['komoditas_id'];
+        $tanggal      = $validated['tanggal'] ?? now()->toDateString();
+        $provinsiId   = $request->integer('provinsi_id') ?: null;
+        $provinsiIds  = $validated['provinsi_ids'] ?? null;
+        $kabkotaId    = $request->integer('kabkota_id') ?: null;
 
         $query = Komoditas::query()
             ->filterKomoditas($komoditasId)
@@ -150,6 +169,7 @@ class MapController extends Controller
             ->select(
                 'komoditas.pasar_id',
                 'pasar.psr_nama as pasar_nama',
+                'kab_kota.id as kabkota_id',
                 'kab_kota.kab_nama as kabupaten_nama',
                 'provinsi.nama as provinsi_nama',
                 'provinsi.id_provinsi',
@@ -162,14 +182,20 @@ class MapController extends Controller
             ->groupBy(
                 'komoditas.pasar_id',
                 'pasar.psr_nama',
+                'kab_kota.id',
                 'kab_kota.kab_nama',
                 'provinsi.nama',
                 'provinsi.id_provinsi'
             );
-        // dd($query->toSql(), $query->getBindings());
 
         if ($provinsiId) {
             $query->where('kab_kota.provinsi_id', $provinsiId);
+        } elseif ($provinsiIds) {
+            $query->whereIn('kab_kota.provinsi_id', $provinsiIds);
+        }
+
+        if ($kabkotaId) {
+            $query->where('pasar.kabkota_id', $kabkotaId);
         }
 
         $pasarData = $query->get();
@@ -188,6 +214,7 @@ class MapController extends Controller
                 'properties' => [
                     'pasar_id'       => $item->pasar_id,
                     'nama'           => $item->pasar_nama,
+                    'kabkota_id'     => (int) $item->kabkota_id,
                     'kabupaten'      => $item->kabupaten_nama,
                     'provinsi'       => $item->provinsi_nama,
                     'provinsi_id'    => $item->id_provinsi,
@@ -203,10 +230,12 @@ class MapController extends Controller
             'type'     => 'FeatureCollection',
             'features' => $features,
             'meta'     => [
-                'level'         => 'pasar',
-                'komoditas_id'  => $komoditasId,
-                'tanggal'       => $tanggal,
-                'provinsi_id'   => $provinsiId,
+                'level'          => 'pasar',
+                'komoditas_id'   => $komoditasId,
+                'tanggal'        => $tanggal,
+                'provinsi_id'    => $provinsiId,
+                'provinsi_ids'   => $provinsiIds,
+                'kabkota_id'     => $kabkotaId,
                 'total_features' => count($features),
             ],
         ]);

@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\KabupatenKota;
 use App\Models\MasterKomoditas;
 use App\Models\Pasar;
 use App\Models\Provinsi;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 class MasterController extends Controller
@@ -74,6 +76,30 @@ class MasterController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $data,
+        ]);
+    }
+
+    /**
+     * GET /api/master/kabkota?provinsi_id=35
+     * Daftar kabupaten/kota untuk dropdown filter.
+     */
+    public function kabkota(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'provinsi_id' => 'required|integer|exists:provinsi,id_provinsi',
+        ]);
+
+        $cacheKey = 'master:kabkota:' . $validated['provinsi_id'];
+
+        $data = Cache::remember($cacheKey, 3600, function () use ($validated) {
+            return KabupatenKota::where('provinsi_id', $validated['provinsi_id'])
+                ->orderBy('kab_nama')
+                ->get(['id', 'kab_nama as nama', 'provinsi_id']);
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => $data,
         ]);
     }
 }

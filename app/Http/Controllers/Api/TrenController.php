@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Komoditas;
-use App\Models\KomoditasRataRataProvinsi;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,32 +27,36 @@ class TrenController extends Controller
     {
         // ── Validasi ─────────────────────────────────────────
         $validated = $request->validate([
-            'komoditas_id' => 'required|integer|exists:master_komoditas,id_master_komoditas',
-            'provinsi_id'  => 'nullable|integer|exists:provinsi,id_provinsi',
-            'from'         => 'nullable|date',
-            'to'           => 'nullable|date|after_or_equal:from',
+            'komoditas_id'  => 'required|integer|exists:master_komoditas,id_master_komoditas',
+            'provinsi_id'   => 'nullable|integer|exists:provinsi,id_provinsi',
+            'provinsi_ids'  => 'nullable|array',
+            'provinsi_ids.*' => 'integer|exists:provinsi,id_provinsi',
+            'from'          => 'nullable|date',
+            'to'            => 'nullable|date|after_or_equal:from',
         ]);
 
-        $komoditasId = (int) $validated['komoditas_id'];
-        $provinsiId  = isset($validated['provinsi_id']) ? (int) $validated['provinsi_id'] : null;
-        $from        = $validated['from'] ?? now()->subDays(30)->toDateString();
-        $to          = $validated['to']   ?? now()->toDateString();
+        $komoditasId  = (int) $validated['komoditas_id'];
+        $provinsiId   = isset($validated['provinsi_id']) ? (int) $validated['provinsi_id'] : null;
+        $provinsiIds  = $validated['provinsi_ids'] ?? null;
+        $from         = $validated['from'] ?? now()->subDays(30)->toDateString();
+        $to           = $validated['to']   ?? now()->toDateString();
 
         // ── Query ─────────────────────────────────────────────
         if ($provinsiId) {
             $data = $this->trenProvinsi($komoditasId, $provinsiId, $from, $to);
         } else {
-            $data = $this->trenNasional($komoditasId, $from, $to);
+            $data = $this->trenNasional($komoditasId, $from, $to, $provinsiIds);
         }
 
         return response()->json([
             'status' => 'success',
             'meta'   => [
-                'komoditas_id' => $komoditasId,
-                'provinsi_id'  => $provinsiId ?? 'nasional',
-                'from'         => $from,
-                'to'           => $to,
-                'total_titik'  => $data->count(),
+                'komoditas_id'  => $komoditasId,
+                'provinsi_id'   => $provinsiId ?? ($provinsiIds ? 'filtered' : 'nasional'),
+                'provinsi_ids'  => $provinsiIds,
+                'from'          => $from,
+                'to'            => $to,
+                'total_titik'   => $data->count(),
             ],
             'data' => $data,
         ]);
@@ -156,77 +159,67 @@ class TrenController extends Controller
 
     private function trenProvinsi(int $komoditasId, int $provinsiId, string $from, string $to)
     {
-        $data = KomoditasRataRataProvinsi::query()
+        $data = Komoditas::query()
             ->filterKomoditas($komoditasId)
-            ->filterProvinsi($provinsiId)
             ->dateRange($from, $to)
             ->validHarga()
-            ->with('provinsi:id_provinsi,nama')
-            ->orderBy('tanggal')
+            ->join('pasar', 'komoditas.pasar_id', '=', 'pasar.id')
+            ->join('kab_kota', 'pasar.kabkota_id', '=', 'kab_kota.id')
+            ->where('kab_kota.provinsi_id', $provinsiId)
+            ->join('provinsi', 'kab_kota.provinsi_id', '=', 'provinsi.id_provinsi')
+            ->select(
+                'komoditas.tanggal',
+                DB::raw('ROUND(AVG(komoditas.harga)) AS harga'),
+                'provinsi.nama as label',
+                'provinsi.id_provinsi as provinsi_id'
+            )
+            ->groupBy('komoditas.tanggal', 'provinsi.nama', 'provinsi.id_provinsi')
+            ->orderBy('komoditas.tanggal')
             ->get()
             ->map(fn($row) => [
-                'tanggal'     => $row->tanggal->format('Y-m-d'),
-                'harga'       => $row->harga,
-                'label'       => $row->provinsi?->nama ?? 'Provinsi #' . $row->provinsi_id,
-                'provinsi_id' => $row->provinsi_id,
+                'tanggal'     => $row->tanggal instanceof \Carbon\Carbon
+                    ? $row->tanggal->format('Y-m-d')
+                    : $row->tanggal,
+                'harga'       => (int) $row->harga,
+                'label'       => $row->label,
+                'provinsi_id' => (int) $row->provinsi_id,
             ]);
 
         return $data;
-        // return KomoditasRataRataProvinsi::query()
-        //     ->filterKomoditas($komoditasId)
-        //     ->filterProvinsi($provinsiId)
-        //     ->dateRange($from, $to)
-        //     ->validHarga()
-        //     ->with('provinsi:id_provinsi,nama')
-        //     ->orderBy('tanggal')
-        //     ->get()
-        //     ->map(fn($row) => [
-        //         'tanggal'     => $row->tanggal->format('Y-m-d'),
-        //         'harga'       => $row->harga,
-        //         'label'       => $row->provinsi?->nama ?? 'Provinsi #' . $row->provinsi_id,
-        //         'provinsi_id' => $row->provinsi_id,
-        //     ]);
     }
 
-    private function trenNasional(int $komoditasId, string $from, string $to)
+    private function trenNasional(int $komoditasId, string $from, string $to, ?array $provinsiIds = null)
     {
-        $data = KomoditasRataRataProvinsi::query()
+        $query = Komoditas::query()
             ->filterKomoditas($komoditasId)
             ->dateRange($from, $to)
             ->validHarga()
+            ->join('pasar', 'komoditas.pasar_id', '=', 'pasar.id')
+            ->join('kab_kota', 'pasar.kabkota_id', '=', 'kab_kota.id')
+            ->join('provinsi', 'kab_kota.provinsi_id', '=', 'provinsi.id_provinsi');
+
+        if ($provinsiIds) {
+            $query->whereIn('kab_kota.provinsi_id', $provinsiIds);
+        }
+
+        $data = $query
             ->select(
-                'tanggal',
-                DB::raw('ROUND(AVG(harga)) AS harga'),
-                DB::raw('COUNT(DISTINCT provinsi_id) AS jumlah_provinsi')
+                'komoditas.tanggal',
+                DB::raw('ROUND(AVG(komoditas.harga)) AS harga'),
+                DB::raw('COUNT(DISTINCT provinsi.id_provinsi) AS jumlah_provinsi')
             )
-            ->groupBy('tanggal')
-            ->orderBy('tanggal')
+            ->groupBy('komoditas.tanggal')
+            ->orderBy('komoditas.tanggal')
             ->get()
             ->map(fn($row) => [
-                'tanggal'          => $row->tanggal->format('Y-m-d'),
+                'tanggal'          => $row->tanggal instanceof \Carbon\Carbon
+                    ? $row->tanggal->format('Y-m-d')
+                    : $row->tanggal,
                 'harga'            => (int) $row->harga,
-                'label'            => 'Nasional',
+                'label'            => $provinsiIds ? 'Terfilter' : 'Nasional',
                 'jumlah_provinsi'  => (int) $row->jumlah_provinsi,
             ]);
 
         return $data;
-        // return KomoditasRataRataProvinsi::query()
-        //     ->filterKomoditas($komoditasId)
-        //     ->dateRange($from, $to)
-        //     ->validHarga()
-        //     ->select(
-        //         'tanggal',
-        //         DB::raw('ROUND(AVG(harga)) AS harga'),
-        //         DB::raw('COUNT(DISTINCT provinsi_id) AS jumlah_provinsi')
-        //     )
-        //     ->groupBy('tanggal')
-        //     ->orderBy('tanggal')
-        //     ->get()
-        //     ->map(fn($row) => [
-        //         'tanggal'          => $row->tanggal,
-        //         'harga'            => (int) $row->harga,
-        //         'label'            => 'Nasional',
-        //         'jumlah_provinsi'  => (int) $row->jumlah_provinsi,
-        //     ]);
     }
 }

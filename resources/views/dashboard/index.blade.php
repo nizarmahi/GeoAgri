@@ -638,6 +638,24 @@
         </div>
     </div>
 
+    {{-- ── Grafana Embed ──────────────────────────── --}}
+    <div class="card" style="margin-bottom:20px;padding:16px;overflow:hidden;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div>
+                <div style="font-size:15px;font-weight:700;color:var(--text)">Tren Harga (Grafana)</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Panel embedded dari Grafana dashboard</div>
+            </div>
+        </div>
+        @include('partials.grafana-embed', [
+            'panelId' => 'panel-2',
+            'height' => 260,
+            'komoditasIds' => [],
+            'provinsiId' => '',
+            'range' => 30,
+            'tab' => 'analisis-tren-harga-komoditas',
+        ])
+    </div>
+
     {{-- ── Map Section ─────────────────────────────── --}}
     <div class="map-section">
         <div class="map-header">
@@ -798,6 +816,24 @@
             syncKomoditasPicker();
             updateChartLegend(state.komoditas_ids.map(getKomoditasLabel));
             updateChartSubtitle();
+        }
+
+        // ── Grafana Embed ─────────────────────────────────────
+        function updateGrafanaEmbed() {
+            const el = document.getElementById('grafana-panel-2');
+            if (!el) return;
+
+            const base = '{{ config("grafana.url") }}/d-solo/{{ config("grafana.dashboard_uid") }}/dashboard-geoagri';
+            const rangeMap = {7:'now-7d',30:'now-30d',90:'now-90d'};
+            const params = new URLSearchParams({
+                orgId:1, from: rangeMap[state.range]||'now-30d', to:'now',
+                timezone:'browser', theme:'light', kiosk:'',
+                panelId:'panel-2', dtab:'analisis-tren-harga-komoditas',
+            });
+            state.komoditas_ids.forEach(id => params.append('var-komoditas', id));
+            if (state.provinsi_id) params.set('var-provinsi', state.provinsi_id);
+
+            el.src = base + '?' + params;
         }
 
         // ── Load master data ───────────────────────────────────
@@ -1095,6 +1131,7 @@
             state.provinsi_id = e.target.value || null;
             syncPasarOptions();
             loadTrend();
+            updateGrafanaEmbed();
         });
 
         document.getElementById('filterPasar').addEventListener('change', e => {
@@ -1108,6 +1145,7 @@
                 state.range = parseInt(btn.dataset.range);
                 updateChartSubtitle();
                 loadTrend();
+                updateGrafanaEmbed();
             });
         });
 
@@ -1115,6 +1153,7 @@
             loadStats();
             loadTrend();
             loadMap();
+            updateGrafanaEmbed();
         }
 
         document.getElementById('filterMapTanggal').addEventListener('change', () => {
