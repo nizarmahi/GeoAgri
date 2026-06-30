@@ -90,7 +90,10 @@ class MapController extends Controller
                 'provinsi_id',
                 DB::raw("
                     ST_AsGeoJSON(
-                        ST_SimplifyPreserveTopology(geom, 0.05)
+                        ST_SimplifyPreserveTopology(
+                            ST_Union(geom),
+                            0.001
+                        )
                     ) AS geojson
                 ")
             )
@@ -101,7 +104,7 @@ class MapController extends Controller
         }
 
         $geometries = $geoQuery
-            ->groupBy('provinsi_id', 'kab_kota.geom')
+            ->groupBy('provinsi_id')
             ->get();
 
         $features = [];
