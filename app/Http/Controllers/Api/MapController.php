@@ -90,10 +90,7 @@ class MapController extends Controller
                 'provinsi_id',
                 DB::raw("
                     ST_AsGeoJSON(
-                        ST_SimplifyPreserveTopology(
-                            ST_Union(geom),
-                            0.001
-                        )
+                        ST_Union(geom)
                     ) AS geojson
                 ")
             )
