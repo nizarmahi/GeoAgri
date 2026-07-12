@@ -79,6 +79,7 @@ class TrenController extends Controller
         $validated = $request->validate([
             'komoditas_id' => 'nullable|integer|exists:master_komoditas,id_master_komoditas',
             'provinsi_id' => 'nullable|integer|exists:provinsi,id_provinsi',
+            'kabkota_id' => 'nullable|integer|exists:kab_kota,id',
             'pasar_id' => 'nullable|integer|exists:pasar,id',
             'from' => 'nullable|date',
             'to' => 'nullable|date|after_or_equal:from',
@@ -117,6 +118,10 @@ class TrenController extends Controller
             // $query->where('provinsi.id_provinsi', 4);
         }
 
+        if (! empty($validated['kabkota_id'])) {
+            $query->where('kab_kota.id', $validated['kabkota_id']);
+        }
+
         if (! empty($validated['pasar_id'])) {
             $query->where('komoditas.pasar_id', $validated['pasar_id']);
         }
@@ -134,6 +139,7 @@ class TrenController extends Controller
                 'id' => $row->id,
                 'tanggal' => $row->tanggal->format('Y-m-d'),
                 'provinsi' => $row->provinsi,
+                'kabupaten' => $row->kabupaten,
                 'pasar' => $row->pasar,
                 'komoditas' => $row->komoditas,
                 'harga' => $row->harga,

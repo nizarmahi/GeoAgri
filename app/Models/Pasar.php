@@ -49,10 +49,10 @@ class Pasar extends Model
         return $this->hasOneThrough(
             Provinsi::class,
             KabupatenKota::class,
-            'id_kabupaten_kota', // FK di kabupaten_kota (local key pasar)
-            'id_provinsi',       // PK di provinsi
-            'kabkota_id', // FK di pasar
-            'provinsi_id'        // FK di kabupaten_kota → provinsi
+            'id',            // firstKey: kab_kota.id = pasar.kabkota_id
+            'provinsi_id',   // secondKey: kab_kota.provinsi_id = provinsi.id_provinsi
+            'kabkota_id',    // localKey: pasar.kabkota_id
+            'id_provinsi'    // secondLocalKey: provinsi.id_provinsi
         );
     }
 

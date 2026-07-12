@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\MapController;
 use App\Http\Controllers\Api\ScrapingLogController;
 use App\Http\Controllers\Api\NullAnalysisController;
 use App\Http\Controllers\Api\PasarAnalysisController;
+use App\Http\Controllers\Api\DashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,6 +31,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // ── Public Read-Only (Guest bisa akses) ────────────────────────
 Route::middleware('throttle:60,1')->group(function () {
+
+    // ── Dashboard ───────────────────────────────────────────────
+    Route::get('dashboard', DashboardController::class);
 
     // ── Master / Referensi ─────────────────────────────────────
     Route::prefix('master')->group(function () {
