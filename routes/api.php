@@ -64,8 +64,9 @@ Route::middleware('throttle:60,1')->group(function () {
         Route::get('analisis-pasar', PasarAnalysisController::class);
     });
 
-    // ── Scraping Log (Read Only) ───────────────────────────────
+    // ── Scraping Log ──────────────────────────────────────────
     Route::get('scraping/logs', [ScrapingLogController::class, 'index']);
+    Route::post('scraping/logs', [ScrapingLogController::class, 'store']);
 });
 
 // ── Admin Only (Login + Role admin) ────────────────────────────
@@ -74,9 +75,6 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     // ── Pipeline ───────────────────────────────────────────────
     Route::get('pipeline/status', [PipelineController::class, 'status']);
     Route::post('pipeline/trigger', [PipelineController::class, 'triggerScraping']);
-
-    // ── Scraping Log (Write) ───────────────────────────────────
-    Route::post('scraping/logs', [ScrapingLogController::class, 'store']);
 
     // ── Master Data CRUD ───────────────────────────────────────
     Route::get('provinsi', [AdminMasterController::class, 'indexProvinsi']);
